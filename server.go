@@ -21,13 +21,21 @@ func mkstream(w http.ResponseWriter, r *http.Request) {
 func pub(w http.ResponseWriter, r *http.Request) {
 	uuid := UUID(r.URL.Query().Get(":uuid"))
 
+	if r.Header.Get("Transfer_encoding") != "chunked" {
+		log.Printf(r.Header.Get("Transfer_encoding"))
+		http.Error(w, "A chunked Transfer-Encoding header is required.", http.StatusBadRequest)
+		return
+	}
+
 	msgBroker := NewRedisBroker(uuid)
 	defer msgBroker.UnsubscribeAll()
 
 	scanner := bufio.NewScanner(r.Body)
+	defer r.Body.Close()
+	scanner.Split(bufio.ScanLines)
 
 	for scanner.Scan() {
-		msgBroker.Publish(scanner.Bytes())
+		msgBroker.Publish([]byte(scanner.Text() + "\n"))
 	}
 }
 
@@ -38,9 +46,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Transfer-Encoding", "chunked")
 
 	uuid := UUID(r.URL.Query().Get(":uuid"))
 
