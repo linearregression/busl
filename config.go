@@ -1,4 +1,4 @@
-package busl
+package main
 
 import (
 	"flag"

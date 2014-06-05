@@ -1,4 +1,4 @@
-package busl
+package main
 
 type Broker interface {
 	Publish(msg []byte)

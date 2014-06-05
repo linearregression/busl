@@ -1,0 +1,14 @@
+{
+	"ImportPath": "github.com/naaman/busl",
+	"GoVersion": "go1.2",
+	"Deps": [
+		{
+			"ImportPath": "github.com/cyberdelia/pat",
+			"Rev": "ea31bfdada81cbe4019f605ed6e2887b7d39eaea"
+		},
+		{
+			"ImportPath": "github.com/garyburd/redigo/redis",
+			"Rev": "a6a0a737c00caf4d4c2bb589941ace0d688168bb"
+		}
+	]
+}
