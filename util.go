@@ -20,3 +20,9 @@ func uuid() (string, error) {
 	return hex.EncodeToString(uuid), nil
 }
 
+type StringSliceUtil []string
+
+func (s StringSliceUtil) Contains(check string) bool {
+	for _, c := range s { if c == check { return true }	}
+	return false
+}

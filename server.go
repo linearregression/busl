@@ -21,8 +21,7 @@ func mkstream(w http.ResponseWriter, r *http.Request) {
 func pub(w http.ResponseWriter, r *http.Request) {
 	uuid := UUID(r.URL.Query().Get(":uuid"))
 
-	if r.Header.Get("Transfer_encoding") != "chunked" {
-		log.Printf(r.Header.Get("Transfer_encoding"))
+	if !StringSliceUtil(r.TransferEncoding).Contains("chunked") {
 		http.Error(w, "A chunked Transfer-Encoding header is required.", http.StatusBadRequest)
 		return
 	}
