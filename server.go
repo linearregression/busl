@@ -6,6 +6,7 @@ import (
 	"github.com/cyberdelia/pat"
 	"log"
 	"io"
+	"time"
 )
 
 func mkstream(w http.ResponseWriter, r *http.Request) {
@@ -53,10 +54,20 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	ch := msgBroker.Subscribe()
 	defer msgBroker.UnsubscribeAll()
 
+	ticker := time.NewTicker(time.Second * 20)
+	go func() {
+		for _ = range ticker.C {
+			w.Header().Set("Hustle", "bustle")
+			f.Flush()
+		}
+	}()
+
 	for msg := range ch {
 		w.Write(msg)
 		f.Flush()
 	}
+
+	ticker.Stop()
 }
 
 func Start() {
