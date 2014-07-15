@@ -17,6 +17,7 @@ var (
 	redisUrl = flag.String("redisUrl", os.Getenv("REDIS_URL"), "URL of the redis server")
 	redisServer, _ = url.Parse(*redisUrl)
 	redisPool *redis.Pool = newPool(redisServer)
+	redisKeyExpire = 60 // redis uses seconds for EXPIRE
 )
 
 func newPool(server *url.URL) *redis.Pool {
@@ -118,7 +119,11 @@ func (b *RedisBroker) publishOn(msg []byte, channel string) {
 	conn := redisPool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("PUBLISH", channel, msg)
+	conn.Send("MULTI")
+	conn.Send("PUBLISH", channel, msg)
+	conn.Send("APPEND", channel, msg)
+	conn.Send("EXPIRE", channel, redisKeyExpire)
+	_, err := conn.Do("EXEC")
 	if err != nil {
 		log.Printf("publish: %s", err)
 	}
