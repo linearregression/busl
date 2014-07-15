@@ -10,13 +10,13 @@ import (
 )
 
 func mkstream(w http.ResponseWriter, r *http.Request) {
-	uuid, err := uuid()
+	uuid, err := NewUUID()
 	if err != nil {
 		log.Printf("%v", err)
 		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
 		return
 	}
-	io.WriteString(w, uuid)
+	io.WriteString(w, string(uuid))
 }
 
 func pub(w http.ResponseWriter, r *http.Request) {
