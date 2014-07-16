@@ -1,11 +1,11 @@
 package main
 
 import (
-	"net/http"
 	"bufio"
 	"github.com/cyberdelia/pat"
-	"log"
 	"io"
+	"log"
+	"net/http"
 	"time"
 )
 
@@ -79,7 +79,7 @@ func Start() {
 
 	http.Handle("/", p)
 
-	if err := http.ListenAndServe(":" + *httpPort, nil); err != nil {
+	if err := http.ListenAndServe(":"+*httpPort, nil); err != nil {
 		panic(err)
 	}
 }
