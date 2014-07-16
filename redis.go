@@ -78,6 +78,7 @@ func (b *RedisBroker) redisSubscribe(ch chan []byte) {
 	defer conn.Close()
 	b.psc = redis.PubSubConn{conn}
 	b.psc.PSubscribe(b.channelId + "*")
+	b.replay(b.channelId, ch)
 	for {
 		switch msg := b.psc.Receive().(type) {
 		case redis.PMessage:
@@ -126,5 +127,21 @@ func (b *RedisBroker) publishOn(msg []byte, channel string) {
 	_, err := conn.Do("EXEC")
 	if err != nil {
 		log.Printf("publish: %s", err)
+	}
+}
+
+func (b *RedisBroker) replay(channel UUID, ch chan[]byte) {
+	conn := redisPool.Get()
+	defer conn.Close()
+
+	buffer, err := conn.Do("GET", string(channel))
+
+	if err != nil {
+		log.Printf("publish: %s", err)
+		return
+	}
+
+	if buffer != nil {
+		ch <- buffer.([]byte)
 	}
 }
