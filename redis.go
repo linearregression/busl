@@ -14,10 +14,11 @@ const (
 )
 
 var (
-	redisUrl                   = flag.String("redisUrl", os.Getenv("REDIS_URL"), "URL of the redis server")
-	redisServer, _             = url.Parse(*redisUrl)
-	redisPool      *redis.Pool = newPool(redisServer)
-	redisKeyExpire             = 60 // redis uses seconds for EXPIRE
+	redisUrl                       = flag.String("redisUrl", os.Getenv("REDIS_URL"), "URL of the redis server")
+	redisServer, _                 = url.Parse(*redisUrl)
+	redisPool          *redis.Pool = newPool(redisServer)
+	redisKeyExpire                 = 60 // redis uses seconds for EXPIRE
+	redisChannelExpire             = redisKeyExpire * 5
 )
 
 func newPool(server *url.URL) *redis.Pool {
