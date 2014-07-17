@@ -5,3 +5,8 @@ type Broker interface {
 	Subscribe() chan []byte
 	Unsubscribe(ch []byte)
 }
+
+type Registrar interface {
+	Register(id UUID) error
+	IsRegistered(id UUID) bool
+}
