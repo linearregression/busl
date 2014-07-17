@@ -57,6 +57,10 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Transfer-Encoding", "chunked")
 
 	uuid := UUID(r.URL.Query().Get(":uuid"))
+	if !NewRedisRegistrar().IsRegistered(uuid) {
+		http.Error(w, "Channel is not registered.", http.StatusGone)
+		return
+	}
 
 	msgBroker := NewRedisBroker(uuid)
 	ch := msgBroker.Subscribe()

@@ -176,5 +176,6 @@ func (rr *RedisRegistrar) IsRegistered(channel UUID) (registered bool) {
 		log.Printf("register: %s", err)
 		return false
 	}
-	return result.(bool)
+
+	return result.(int64) == 1
 }
