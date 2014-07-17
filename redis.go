@@ -146,3 +146,35 @@ func (b *RedisBroker) replay(channel UUID, ch chan []byte) {
 		ch <- buffer.([]byte)
 	}
 }
+
+type RedisRegistrar struct{}
+
+func NewRedisRegistrar() *RedisRegistrar {
+	registrar := &RedisRegistrar{}
+
+	return registrar
+}
+
+func (rr *RedisRegistrar) Register(channel UUID) (err error) {
+	conn := redisPool.Get()
+	defer conn.Close()
+
+	_, err = conn.Do("SETEX", channel, redisChannelExpire, make([]byte, 0))
+	if err != nil {
+		log.Printf("register: %s", err)
+		return
+	}
+	return
+}
+
+func (rr *RedisRegistrar) IsRegistered(channel UUID) (registered bool) {
+	conn := redisPool.Get()
+	defer conn.Close()
+
+	result, err := conn.Do("EXISTS", channel)
+	if err != nil {
+		log.Printf("register: %s", err)
+		return false
+	}
+	return result.(bool)
+}
