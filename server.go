@@ -10,12 +10,20 @@ import (
 )
 
 func mkstream(w http.ResponseWriter, r *http.Request) {
+	registrar := NewRedisRegistrar()
 	uuid, err := NewUUID()
 	if err != nil {
 		log.Printf("%v", err)
 		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
 		return
 	}
+
+	if err := registrar.Register(uuid); err != nil {
+		log.Printf("%v", err)
+		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
+		return
+	}
+
 	io.WriteString(w, string(uuid))
 }
 
