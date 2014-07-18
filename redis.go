@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"github.com/garyburd/redigo/redis"
 	"log"
@@ -67,7 +68,11 @@ func NewRedisBroker(uuid UUID) *RedisBroker {
 	return broker
 }
 
-func (b *RedisBroker) Subscribe() (ch chan []byte) {
+func (b *RedisBroker) Subscribe() (ch chan []byte, err error) {
+	if !NewRedisRegistrar().IsRegistered(b.channelId) {
+		return nil, errors.New("Channel is not registered.")
+	}
+
 	ch = make(chan []byte, msgBuf)
 	b.subscribers[ch] = true
 	go b.redisSubscribe(ch)

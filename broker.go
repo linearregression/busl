@@ -2,7 +2,7 @@ package main
 
 type Broker interface {
 	Publish(msg []byte)
-	Subscribe() chan []byte
+	Subscribe() (chan []byte, error)
 	Unsubscribe(ch []byte)
 }
 
