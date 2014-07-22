@@ -10,12 +10,20 @@ import (
 )
 
 func mkstream(w http.ResponseWriter, r *http.Request) {
+	registrar := NewRedisRegistrar()
 	uuid, err := NewUUID()
 	if err != nil {
 		log.Printf("%v", err)
 		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
 		return
 	}
+
+	if err := registrar.Register(uuid); err != nil {
+		log.Printf("%v", err)
+		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
+		return
+	}
+
 	io.WriteString(w, string(uuid))
 }
 
@@ -49,9 +57,13 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Transfer-Encoding", "chunked")
 
 	uuid := UUID(r.URL.Query().Get(":uuid"))
-
 	msgBroker := NewRedisBroker(uuid)
-	ch := msgBroker.Subscribe()
+	ch, err := msgBroker.Subscribe()
+	if err != nil {
+		http.Error(w, "Channel is not registered.", http.StatusGone)
+		return
+	}
+
 	defer msgBroker.UnsubscribeAll()
 
 	ticker := time.NewTicker(time.Second * 20)
