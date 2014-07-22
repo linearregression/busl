@@ -4,6 +4,8 @@ busl - the bustle part of hustle.
 
 a simple pubsub service that runs on Heroku.
 
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
+
 ## usage
 
 create a stream:

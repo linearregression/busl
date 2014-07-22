@@ -11,8 +11,6 @@
   ],
   "website": "http://github.com/naaman/busl",
   "repository": "http://github.com/naaman/busl",
-  "logo": null,
-  "success_url": null,
   "scripts": {},
   "env": {
     "BUILDPACK_URL": "https://github.com/kr/heroku-buildpack-go"
