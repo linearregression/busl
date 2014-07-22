@@ -1,0 +1,23 @@
+{
+  "name": "Busl",
+  "description": "Pubsub over HTTP and chunked encoding on Heroku.",
+  "keywords": [
+    "streaming",
+    "pubsub",
+    "redis",
+    "go",
+    "chunked",
+    "encoding"
+  ],
+  "website": "http://github.com/naaman/busl",
+  "repository": "http://github.com/naaman/busl",
+  "logo": null,
+  "success_url": null,
+  "scripts": {},
+  "env": {
+    "BUILDPACK_URL": "https://github.com/kr/heroku-buildpack-go"
+  },
+  "addons": [
+    "redistogo"
+  ]
+}

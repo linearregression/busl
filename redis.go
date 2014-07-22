@@ -15,12 +15,19 @@ const (
 
 var (
 	redisUrl                   = flag.String("redisUrl", os.Getenv("REDIS_URL"), "URL of the redis server")
-	redisServer, _             = url.Parse(*redisUrl)
-	redisPool      *redis.Pool = newPool(redisServer)
+	redisServer		 *url.URL
+	redisPool      *redis.Pool
 	redisKeyExpire             = 60 // redis uses seconds for EXPIRE
 )
 
+func init() {
+	flag.Parse()
+	redisServer, _ = url.Parse(*redisUrl)
+	redisPool = newPool(redisServer)
+}
+
 func newPool(server *url.URL) *redis.Pool {
+	log.Printf("connecting to redis: %s", server)
 	return &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 4 * time.Minute,
