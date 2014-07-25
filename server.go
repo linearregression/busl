@@ -61,6 +61,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	ch, err := msgBroker.Subscribe()
 	if err != nil {
 		http.Error(w, "Channel is not registered.", http.StatusGone)
+		f.Flush()
 		return
 	}
 
