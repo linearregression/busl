@@ -81,6 +81,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ticker.Stop()
+	f.Flush()
 }
 
 func Start() {
