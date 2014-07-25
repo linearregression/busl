@@ -68,16 +68,26 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	defer msgBroker.UnsubscribeAll()
 
 	ticker := time.NewTicker(time.Second * 20)
-	go func() {
-		for _ = range ticker.C {
-			w.Header().Set("Hustle", "bustle")
-			f.Flush()
-		}
-	}()
 
-	for msg := range ch {
-		w.Write(msg)
-		f.Flush()
+	for {
+		select {
+		case msg, msgOk := <- ch:
+			if msgOk {
+				w.Write(msg)
+				f.Flush()
+			} else {
+				return
+			}
+		case _, tickOk := <- ticker.C:
+			if tickOk {
+				w.Header().Set("Hustle", "busl")
+				f.Flush()
+			} else {
+				w.Write([]byte("Unable to keep connection alive."))
+				f.Flush()
+				return
+			}
+		}
 	}
 
 	ticker.Stop()
