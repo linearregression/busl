@@ -102,19 +102,19 @@ func (b *RedisBroker) redisSubscribe(ch chan []byte) {
 		case redis.PMessage:
 			switch msg.Channel {
 			case string(b.channelId) + "kill":
-				log.Printf("RedisBroker.redisSubscribe.Channel.%s.kill=1", b.channelId)
+				count("RedisBroker.redisSubscribe.Channel.kill")
 				b.psc.PUnsubscribe(b.channelId + "*")
 			case string(b.channelId):
 				ch <- msg.Data
 			}
 		case redis.Subscription:
-			log.Printf("RedisBroker.redisSubscribe.Channel.%s.%s=%d", msg.Channel, msg.Kind, msg.Count)
 			if msg.Kind == "punsubscribe" || msg.Kind == "unsubscribe" {
+				count("RedisBroker.redisSubscribe.Channel.unsubscribe")
 				b.Unsubscribe(ch)
 				return
 			}
 		case error:
-			log.Printf("RedisBroker.redisSubscribe.RecieveError=1 err=%s", msg)
+			countWithData("RedisBroker.redisSubscribe.RecieveError", 1, "err=%s", msg)
 			return
 		}
 	}
@@ -126,7 +126,7 @@ func (b *RedisBroker) Unsubscribe(ch chan []byte) {
 }
 
 func (b *RedisBroker) UnsubscribeAll() {
-	log.Printf("RedisBroker.UnsubscribeAll=%d", len(b.subscribers))
+	countMany("RedisBroker.UnsubscribeAll", int64(len(b.subscribers)))
 	b.publishOn([]byte{1}, string(b.channelId)+"kill")
 
 	conn := redisPool.Get()
@@ -151,7 +151,7 @@ func (b *RedisBroker) publishOn(msg []byte, channel string) {
 
 	_, err := conn.Do("EXEC")
 	if err != nil {
-		log.Printf("publish: %s", err)
+		countWithData("RedisBroker.publishOn.error", 1, "error=%s", err)
 	}
 }
 
@@ -161,7 +161,7 @@ func (b *RedisBroker) replay(channel UUID, ch chan []byte) (err error) {
 
 	result, err := conn.Do("MGET", string(channel), string(channel)+"done")
 	if err != nil {
-		log.Printf("publish: %s", err)
+		countWithData("RedisBroker.publishOn.error", 1, "error=%s", err)
 		return
 	}
 
@@ -173,7 +173,7 @@ func (b *RedisBroker) replay(channel UUID, ch chan []byte) (err error) {
 	}
 
 	if channelDone != nil && channelDone[0] == 1 {
-		log.Printf("channelDone: %s", channelDone)
+		count("RedisBroker.replay.channelDone")
 		return errors.New("Channel is done.")
 	}
 
@@ -201,7 +201,7 @@ func (rr *RedisRegistrar) Register(channel UUID) (err error) {
 
 	_, err = conn.Do("SETEX", channel, redisChannelExpire, make([]byte, 0))
 	if err != nil {
-		log.Printf("register: %s", err)
+		countWithData("RedisRegistrar.Register.error", 1, "error=%s", err)
 		return
 	}
 	return
@@ -213,7 +213,7 @@ func (rr *RedisRegistrar) IsRegistered(channel UUID) (registered bool) {
 
 	result, err := conn.Do("EXISTS", channel)
 	if err != nil {
-		log.Printf("register: %s", err)
+		countWithData("RedisRegistrar.IsRegistered.error", 1, "error=%s", err)
 		return false
 	}
 

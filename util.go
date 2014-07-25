@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"log"
 )
 
 type UUID string
@@ -29,4 +30,15 @@ func (s StringSliceUtil) Contains(check string) bool {
 		}
 	}
 	return false
+}
+
+func count(metric string) { countMany(metric, 1) }
+func countMany(metric string, count int64) { countWithData(metric, count, "") }
+
+func countWithData(metric string, count int64, extraData string, v ...interface {}) {
+	if extraData == "" {
+		log.Printf("count#%s=%d", metric, count)
+	} else {
+		log.Printf("count#%s=%d %s", metric, count, extraData, v)
+	}
 }
