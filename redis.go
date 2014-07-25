@@ -15,11 +15,11 @@ const (
 )
 
 var (
-	redisUrl                   = flag.String("redisUrl", os.Getenv("REDIS_URL"), "URL of the redis server")
-	redisServer		 *url.URL
-	redisPool      *redis.Pool
-	redisKeyExpire             = 60 // redis uses seconds for EXPIRE
-	redisChannelExpire         = redisKeyExpire * 5																
+	redisUrl           = flag.String("redisUrl", os.Getenv("REDIS_URL"), "URL of the redis server")
+	redisServer        *url.URL
+	redisPool          *redis.Pool
+	redisKeyExpire     = 60 // redis uses seconds for EXPIRE
+	redisChannelExpire = redisKeyExpire * 5
 )
 
 func init() {
