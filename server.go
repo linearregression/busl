@@ -49,15 +49,18 @@ func pub(w http.ResponseWriter, r *http.Request) {
 
 func sub(w http.ResponseWriter, r *http.Request) {
 	f, ok := w.(http.Flusher)
+	closeNotifier := w.(http.CloseNotifier).CloseNotify()
+
 	if !ok {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Transfer-Encoding", "chunked")
-
 	uuid := UUID(r.URL.Query().Get(":uuid"))
+
 	msgBroker := NewRedisBroker(uuid)
+	defer msgBroker.UnsubscribeAll()
+
 	ch, err := msgBroker.Subscribe()
 	if err != nil {
 		http.Error(w, "Channel is not registered.", http.StatusGone)
@@ -65,32 +68,43 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer msgBroker.UnsubscribeAll()
 
-	ticker := time.NewTicker(time.Second * 20)
+	timer := time.NewTimer(*subscribeHeartbeatDuration)
+	defer timer.Stop()
 
 	for {
 		select {
 		case msg, msgOk := <- ch:
 			if msgOk {
+				timer.Reset(*subscribeHeartbeatDuration)
 				w.Write(msg)
 				f.Flush()
 			} else {
+				timer.Stop()
 				return
 			}
-		case _, tickOk := <- ticker.C:
-			if tickOk {
-				w.Header().Set("Hustle", "busl")
+		case t, tOk := <- timer.C:
+			if tOk {
+				count("server.sub.keepAlive")
+				w.Write([]byte{0})
 				f.Flush()
+				timer.Reset(*subscribeHeartbeatDuration)
 			} else {
+				countWithData("server.sub.keepAlive.failed", 1, "timer=%v timerChannel=%v", timer, t)
+				timer.Stop()
 				w.Write([]byte("Unable to keep connection alive."))
 				f.Flush()
+				return
+			}
+		case cn, cnOk := <- closeNotifier:
+			if cn && cnOk {
+				count("server.sub.clientClosed")
+				timer.Stop()
 				return
 			}
 		}
 	}
 
-	ticker.Stop()
 	f.Flush()
 }
 
