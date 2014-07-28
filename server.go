@@ -68,13 +68,12 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	timer := time.NewTimer(*subscribeHeartbeatDuration)
 	defer timer.Stop()
 
 	for {
 		select {
-		case msg, msgOk := <- ch:
+		case msg, msgOk := <-ch:
 			if msgOk {
 				timer.Reset(*subscribeHeartbeatDuration)
 				w.Write(msg)
@@ -83,7 +82,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 				timer.Stop()
 				return
 			}
-		case t, tOk := <- timer.C:
+		case t, tOk := <-timer.C:
 			if tOk {
 				count("server.sub.keepAlive")
 				w.Write([]byte{0})
@@ -96,7 +95,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 				f.Flush()
 				return
 			}
-		case cn, cnOk := <- closeNotifier:
+		case cn, cnOk := <-closeNotifier:
 			if cn && cnOk {
 				count("server.sub.clientClosed")
 				timer.Stop()
