@@ -1,4 +1,8 @@
-package main
+package broker
+
+import (
+	"github.com/naaman/busl/util"
+)
 
 type Broker interface {
 	Publish(msg []byte)
@@ -7,6 +11,6 @@ type Broker interface {
 }
 
 type Registrar interface {
-	Register(id UUID) error
-	IsRegistered(id UUID) bool
+	Register(id util.UUID) error
+	IsRegistered(id util.UUID) bool
 }

@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/naaman/busl/server"
 )
 
 func main() {
-	fmt.Print("Starting busl...")
+	fmt.Println("Starting busl...")
 	flag.Parse()
-	Start()
+	server.Start()
 }

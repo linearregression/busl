@@ -1,17 +1,19 @@
-package main
+package server
 
 import (
 	"bufio"
 	"github.com/cyberdelia/pat"
+	"github.com/naaman/busl/broker"
+	"github.com/naaman/busl/util"
 	"io"
 	"log"
 	"net/http"
 	"time"
 )
 
-func mkstream(w http.ResponseWriter, r *http.Request) {
-	registrar := NewRedisRegistrar()
-	uuid, err := NewUUID()
+func mkstream(w http.ResponseWriter, _ *http.Request) {
+	registrar := broker.NewRedisRegistrar()
+	uuid, err := util.NewUUID()
 	if err != nil {
 		log.Printf("%v", err)
 		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
@@ -28,14 +30,14 @@ func mkstream(w http.ResponseWriter, r *http.Request) {
 }
 
 func pub(w http.ResponseWriter, r *http.Request) {
-	uuid := UUID(r.URL.Query().Get(":uuid"))
+	uuid := util.UUID(r.URL.Query().Get(":uuid"))
 
-	if !StringSliceUtil(r.TransferEncoding).Contains("chunked") {
+	if !util.StringSliceUtil(r.TransferEncoding).Contains("chunked") {
 		http.Error(w, "A chunked Transfer-Encoding header is required.", http.StatusBadRequest)
 		return
 	}
 
-	msgBroker := NewRedisBroker(uuid)
+	msgBroker := broker.NewRedisBroker(uuid)
 	defer msgBroker.UnsubscribeAll()
 
 	scanner := bufio.NewScanner(r.Body)
@@ -56,9 +58,9 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uuid := UUID(r.URL.Query().Get(":uuid"))
+	uuid := util.UUID(r.URL.Query().Get(":uuid"))
 
-	msgBroker := NewRedisBroker(uuid)
+	msgBroker := broker.NewRedisBroker(uuid)
 	defer msgBroker.UnsubscribeAll()
 
 	ch, err := msgBroker.Subscribe()
@@ -68,14 +70,14 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	timer := time.NewTimer(*subscribeHeartbeatDuration)
+	timer := time.NewTimer(*util.HeartbeatDuration)
 	defer timer.Stop()
 
 	for {
 		select {
 		case msg, msgOk := <-ch:
 			if msgOk {
-				timer.Reset(*subscribeHeartbeatDuration)
+				timer.Reset(*util.HeartbeatDuration)
 				w.Write(msg)
 				f.Flush()
 			} else {
@@ -84,12 +86,12 @@ func sub(w http.ResponseWriter, r *http.Request) {
 			}
 		case t, tOk := <-timer.C:
 			if tOk {
-				count("server.sub.keepAlive")
+				util.Count("server.sub.keepAlive")
 				w.Write([]byte{0})
 				f.Flush()
-				timer.Reset(*subscribeHeartbeatDuration)
+				timer.Reset(*util.HeartbeatDuration)
 			} else {
-				countWithData("server.sub.keepAlive.failed", 1, "timer=%v timerChannel=%v", timer, t)
+				util.CountWithData("server.sub.keepAlive.failed", 1, "timer=%v timerChannel=%v", timer, t)
 				timer.Stop()
 				w.Write([]byte("Unable to keep connection alive."))
 				f.Flush()
@@ -97,7 +99,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 			}
 		case cn, cnOk := <-closeNotifier:
 			if cn && cnOk {
-				count("server.sub.clientClosed")
+				util.Count("server.sub.clientClosed")
 				timer.Stop()
 				return
 			}
@@ -116,7 +118,7 @@ func Start() {
 
 	http.Handle("/", p)
 
-	if err := http.ListenAndServe(":"+*httpPort, nil); err != nil {
+	if err := http.ListenAndServe(":"+*util.HttpPort, nil); err != nil {
 		panic(err)
 	}
 }

@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"crypto/rand"
@@ -32,10 +32,11 @@ func (s StringSliceUtil) Contains(check string) bool {
 	return false
 }
 
-func count(metric string)                  { countMany(metric, 1) }
-func countMany(metric string, count int64) { countWithData(metric, count, "") }
+func Count(metric string) { CountMany(metric, 1) }
 
-func countWithData(metric string, count int64, extraData string, v ...interface{}) {
+func CountMany(metric string, count int64) { CountWithData(metric, count, "") }
+
+func CountWithData(metric string, count int64, extraData string, v ...interface{}) {
 	if extraData == "" {
 		log.Printf("count#%s=%d", metric, count)
 	} else {
