@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"github.com/naaman/busl/assets"
 )
 
 func mkstream(w http.ResponseWriter, _ *http.Request) {
@@ -65,7 +66,12 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	defer msgBroker.Unsubscribe(ch)
 
 	if err != nil {
-		http.Error(w, "Channel is not registered.", http.StatusGone)
+		message := "Channel is not registered."
+		if r.Header.Get("Accept") == "text/ascii; version=feral" {
+			message = assets.HttpCatGone
+		}
+
+		http.Error(w, message, http.StatusGone)
 		f.Flush()
 		return
 	}
