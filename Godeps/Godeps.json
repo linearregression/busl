@@ -9,6 +9,10 @@
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
 			"Rev": "a6a0a737c00caf4d4c2bb589941ace0d688168bb"
+		},
+		{
+			"ImportPath": "gopkg.in/check.v1",
+			"Rev": "5b76b26efe7f426789852e983fbde4de62c42282"
 		}
 	]
 }
