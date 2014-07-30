@@ -122,8 +122,10 @@ func (b *RedisBroker) redisSubscribe(ch chan []byte) {
 }
 
 func (b *RedisBroker) Unsubscribe(ch chan []byte) {
+	if b.subscribers[ch] {
+		close(ch)
+	}
 	delete(b.subscribers, ch)
-	close(ch)
 }
 
 func (b *RedisBroker) UnsubscribeAll() {
@@ -159,6 +161,10 @@ func (b *RedisBroker) publishOn(msg []byte, channel string) {
 func (b *RedisBroker) replay(channel util.UUID, ch chan []byte) (err error) {
 	conn := redisPool.Get()
 	defer conn.Close()
+
+	if _, channelExists := b.subscribers[ch]; !channelExists {
+		return errors.New("Channel already closed.")
+	}
 
 	result, err := conn.Do("MGET", string(channel), string(channel)+"done")
 	if err != nil {

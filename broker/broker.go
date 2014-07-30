@@ -7,7 +7,7 @@ import (
 type Broker interface {
 	Publish(msg []byte)
 	Subscribe() (chan []byte, error)
-	Unsubscribe(ch []byte)
+	Unsubscribe(ch chan []byte)
 }
 
 type Registrar interface {
