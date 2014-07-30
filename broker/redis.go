@@ -126,7 +126,11 @@ func (b *RedisBroker) redisSubscribe(ch chan []byte) {
 				util.Count("RedisBroker.redisSubscribe.Channel.kill")
 				b.psc.PUnsubscribe(b.channel.wildcardId())
 			case b.channel.id():
-				ch <- msg.Data
+				if b.subscribers[ch] {
+					ch <- msg.Data
+				} else {
+					return
+				}
 			}
 		case redis.Subscription:
 			if msg.Kind == "punsubscribe" || msg.Kind == "unsubscribe" {
