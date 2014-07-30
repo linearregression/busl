@@ -7,12 +7,11 @@ import (
 
 // -----------------------------------------------------------------------
 // IsTrue checker.
-
 type isTrueChecker struct {
 	*CheckerInfo
 }
 
-// The IsTrue checker tests whether the obtained value is nil.
+// The IsTrue checker tests whether the obtained value is true.
 //
 // For example:
 //
