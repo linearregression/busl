@@ -64,20 +64,40 @@ func newPool(server *url.URL) *redis.Pool {
 
 type channel string
 
+func (c channel) id() string {
+	return string(c)
+}
+
+func (c channel) wildcardId() string {
+	return string(c) + "*"
+}
+
+func (c channel) uuid() util.UUID {
+	return util.UUID(c)
+}
+
+func (c channel) doneId() string {
+	return string(c) + "done"
+}
+
+func (c channel) killId() string {
+	return string(c) + "kill"
+}
+
 type RedisBroker struct {
-	channelId   util.UUID
+	channel     channel
 	subscribers map[chan []byte]bool
 	psc         redis.PubSubConn
 }
 
 func NewRedisBroker(uuid util.UUID) *RedisBroker {
-	broker := &RedisBroker{uuid, make(map[chan []byte]bool), redis.PubSubConn{}}
+	broker := &RedisBroker{channel(uuid), make(map[chan []byte]bool), redis.PubSubConn{}}
 
 	return broker
 }
 
 func (b *RedisBroker) Subscribe() (ch chan []byte, err error) {
-	if !NewRedisRegistrar().IsRegistered(b.channelId) {
+	if !NewRedisRegistrar().IsRegistered(b.channel.uuid()) {
 		return nil, errors.New("Channel is not registered.")
 	}
 
@@ -91,9 +111,9 @@ func (b *RedisBroker) redisSubscribe(ch chan []byte) {
 	conn := redisPool.Get()
 	defer conn.Close()
 	b.psc = redis.PubSubConn{conn}
-	b.psc.PSubscribe(b.channelId + "*")
+	b.psc.PSubscribe(b.channel.wildcardId())
 
-	if err := b.replay(b.channelId, ch); err != nil {
+	if err := b.replay(ch); err != nil {
 		b.Unsubscribe(ch)
 		return
 	}
@@ -102,10 +122,10 @@ func (b *RedisBroker) redisSubscribe(ch chan []byte) {
 		switch msg := b.psc.Receive().(type) {
 		case redis.PMessage:
 			switch msg.Channel {
-			case string(b.channelId) + "kill":
+			case b.channel.killId():
 				util.Count("RedisBroker.redisSubscribe.Channel.kill")
-				b.psc.PUnsubscribe(b.channelId + "*")
-			case string(b.channelId):
+				b.psc.PUnsubscribe(b.channel.wildcardId())
+			case b.channel.id():
 				ch <- msg.Data
 			}
 		case redis.Subscription:
@@ -130,27 +150,31 @@ func (b *RedisBroker) Unsubscribe(ch chan []byte) {
 
 func (b *RedisBroker) UnsubscribeAll() {
 	util.CountMany("RedisBroker.UnsubscribeAll", int64(len(b.subscribers)))
-	b.publishOn([]byte{1}, string(b.channelId)+"kill")
 
 	conn := redisPool.Get()
 	defer conn.Close()
 
-	conn.Do("SETEX", string(b.channelId)+"done", redisChannelExpire, []byte{1})
+	_, err := conn.Do("PUBLISH", b.channel.killId(), []byte{1})
+	if err != nil {
+		util.CountWithData("RedisBroker.publishOn.error", 1, "error=%s", err)
+	}
+
+	conn.Do("SETEX", b.channel.doneId(), redisChannelExpire, []byte{1})
 }
 
 func (b *RedisBroker) Publish(msg []byte) {
-	b.publishOn(msg, string(b.channelId))
+	b.publishOn(msg)
 }
 
-func (b *RedisBroker) publishOn(msg []byte, channel string) {
+func (b *RedisBroker) publishOn(msg []byte) {
 	conn := redisPool.Get()
 	defer conn.Close()
 
 	conn.Send("MULTI")
-	conn.Send("PUBLISH", channel, msg)
-	conn.Send("APPEND", channel, msg)
-	conn.Send("EXPIRE", channel, redisKeyExpire)
-	conn.Send("DEL", channel+"done")
+	conn.Send("PUBLISH", b.channel.id(), msg)
+	conn.Send("APPEND", b.channel.id(), msg)
+	conn.Send("EXPIRE", b.channel.id(), redisKeyExpire)
+	conn.Send("DEL", b.channel.doneId())
 
 	_, err := conn.Do("EXEC")
 	if err != nil {
@@ -158,7 +182,7 @@ func (b *RedisBroker) publishOn(msg []byte, channel string) {
 	}
 }
 
-func (b *RedisBroker) replay(channel util.UUID, ch chan []byte) (err error) {
+func (b *RedisBroker) replay(ch chan []byte) (err error) {
 	conn := redisPool.Get()
 	defer conn.Close()
 
@@ -166,7 +190,7 @@ func (b *RedisBroker) replay(channel util.UUID, ch chan []byte) (err error) {
 		return errors.New("Channel already closed.")
 	}
 
-	result, err := conn.Do("MGET", string(channel), string(channel)+"done")
+	result, err := conn.Do("MGET", b.channel.id(), b.channel.doneId())
 	if err != nil {
 		util.CountWithData("RedisBroker.publishOn.error", 1, "error=%s", err)
 		return
