@@ -61,9 +61,9 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	uuid := util.UUID(r.URL.Query().Get(":uuid"))
 
 	msgBroker := broker.NewRedisBroker(uuid)
-	defer msgBroker.UnsubscribeAll()
-
 	ch, err := msgBroker.Subscribe()
+	defer msgBroker.Unsubscribe(ch)
+
 	if err != nil {
 		http.Error(w, "Channel is not registered.", http.StatusGone)
 		f.Flush()
