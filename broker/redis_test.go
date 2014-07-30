@@ -72,3 +72,20 @@ func (s *BrokerSuite) TestRedisSubscribe(c *C) {
 	s.broker.Publish([]byte("busl"))
 	c.Assert(string(<-ch), Equals, "busl")
 }
+
+func (s *BrokerSuite) TestRedisSubscribeReplay(c *C) {
+	s.broker.Publish([]byte("busl"))
+	ch, _ := s.broker.Subscribe()
+	defer s.broker.Unsubscribe(ch)
+	c.Assert(string(<-ch), Equals, "busl")
+}
+
+func (s *BrokerSuite) TestRedisSubscribeChannelDone(c *C) {
+	redisBroker := NewRedisBroker(s.uuid)
+	redisBroker.Publish([]byte("busl"))
+	redisBroker.UnsubscribeAll()
+
+	ch, _ := s.broker.Subscribe()
+	defer s.broker.Unsubscribe(ch)
+	c.Assert(string(<-ch), Equals, "busl")
+}
