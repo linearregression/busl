@@ -1,0 +1,11 @@
+language: go
+go:
+  - 1.2
+services:
+  - redis-server
+env:
+  REDIS_URL=redis://127.0.0.1:6379
+install:
+  - go get github.com/tools/godep
+  - go get gopkg.in/check.v1
+script: /home/travis/gopath/bin/godep go test -v -i ./...
