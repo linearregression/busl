@@ -39,6 +39,10 @@ func (s *RegistrarSuite) TestRegisteredIsRegistered(c *C) {
 	c.Assert(s.registrar.IsRegistered(s.uuid), u.IsTrue)
 }
 
+func (s *RegistrarSuite) TestUnregisteredIsNotRegistered(c *C) {
+	c.Assert(s.registrar.IsRegistered(s.uuid), u.IsFalse)
+}
+
 func (s *RegistrarSuite) TestUnregisteredRedisSubscribe(c *C) {
 	_, err := s.broker.Subscribe()
 	c.Assert(err.Error(), Equals, "Channel is not registered.")
