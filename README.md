@@ -4,6 +4,8 @@ busl - the bustle part of hustle.
 
 a simple pubsub service that runs on Heroku.
 
+[![Build Status](https://travis-ci.org/naaman/busl.svg?branch=master)](https://travis-ci.org/naaman/busl)
+
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
 
 ## usage
