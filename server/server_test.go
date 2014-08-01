@@ -8,6 +8,7 @@ import (
 	. "gopkg.in/check.v1"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -18,8 +19,26 @@ type HttpServerSuite struct{}
 
 var _ = Suite(&HttpServerSuite{})
 
+func newRequest(method, url, body string) *http.Request {
+	request, _ := http.NewRequest(method, url, bytes.NewBufferString(body))
+	urlParts := strings.Split(url, "/")
+	if method == "POST" {
+		request.TransferEncoding = []string{"chunked"}
+		request.Header.Add("Transfer-Encoding", "chunked")
+	}
+	if len(urlParts) == 3 {
+		streamId := urlParts[2]
+		setStreamId(request, streamId)
+	}
+	return request
+}
+
+func setStreamId(req *http.Request, streamId string) {
+	req.URL.RawQuery = "%3Auuid=" + streamId + "&"
+}
+
 func (s *HttpServerSuite) TestMkstream(c *C) {
-	request, _ := http.NewRequest("POST", "/streams", nil)
+	request := newRequest("POST", "/streams", "")
 	response := httptest.NewRecorder()
 
 	mkstream(response, request)
@@ -29,10 +48,7 @@ func (s *HttpServerSuite) TestMkstream(c *C) {
 }
 
 func (s *HttpServerSuite) TestPub(c *C) {
-	request, _ := http.NewRequest("POST", "/streams/1234", bytes.NewBufferString("busl2"))
-	request.URL.RawQuery = "%3Auuid=1234&"
-	request.TransferEncoding = []string{"chunked"}
-	request.Header.Add("Transfer-Encoding", "chunked")
+	request := newRequest("POST", "/streams/1234", "")
 	response := httptest.NewRecorder()
 
 	pub(response, request)
@@ -43,6 +59,7 @@ func (s *HttpServerSuite) TestPub(c *C) {
 
 func (s *HttpServerSuite) TestPubWithoutTransferEncoding(c *C) {
 	request, _ := http.NewRequest("POST", "/streams/1234", nil)
+	setStreamId(request, "1234")
 	response := httptest.NewRecorder()
 
 	pub(response, request)
@@ -58,8 +75,7 @@ func (s *HttpServerSuite) TestSub(c *C) {
 	publisher := broker.NewRedisBroker(streamId)
 	publisher.Publish([]byte("busl1\n"))
 
-	request, _ := http.NewRequest("GET", fmt.Sprintf("/streams/%s", streamId), nil)
-	request.URL.RawQuery = "%3Auuid=" + string(streamId) + "&"
+	request := newRequest("GET", fmt.Sprintf("/streams/%s", streamId), "")
 	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
 	time.AfterFunc(time.Millisecond*50, func() {
