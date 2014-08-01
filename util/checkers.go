@@ -55,3 +55,33 @@ var IsFalse Checker = &isFalseChecker{
 func (checker *isFalseChecker) Check(params []interface{}, names []string) (result bool, error string) {
 	return !isTrue(params[0]), ""
 }
+
+// -----------------------------------------------------------------------
+// IsEmptyString checker.
+type isEmptyStringChecker struct {
+	*CheckerInfo
+}
+
+// The IsEmptyString checker tests whether the obtained string value equals "".
+//
+// For example:
+//
+//    c.Assert("", IsEmptyString)
+//
+var IsEmptyString Checker = &isEmptyStringChecker{
+	&CheckerInfo{Name: "IsEmptyString", Params: []string{"value"}},
+}
+
+func (checker *isEmptyStringChecker) Check(params []interface{}, names []string) (result bool, error string) {
+	return isEmptyString(params[0]), ""
+}
+
+func isEmptyString(obtained interface{}) (result bool) {
+	if obtained != nil {
+		switch v := reflect.ValueOf(obtained); v.Kind() {
+		case reflect.String:
+			return v.String() == ""
+		}
+	}
+	return false
+}

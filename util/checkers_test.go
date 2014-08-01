@@ -1,8 +1,8 @@
 package util_test
 
 import (
-	"testing"
 	. "github.com/naaman/busl/util"
+	"testing"
 )
 
 func TestIsTrueTrueValueIsTrue(t *testing.T) {
@@ -30,5 +30,26 @@ func TestIsFalseTrueValueIsFalse(t *testing.T) {
 	falseCheck, _ := IsFalse.Check([]interface{}{true}, []string{})
 	if falseCheck {
 		t.Errorf("Expected IsFalse to return false, but got true.")
+	}
+}
+
+func TestIsEmptyStringEmptyStringValueIsTrue(t *testing.T) {
+	emptyStringCheck, _ := IsEmptyString.Check([]interface{}{""}, []string{})
+	if !emptyStringCheck {
+		t.Errorf("Expected IsEmptyString to return true, but got false.")
+	}
+}
+
+func TestIsEmptyStringStringWithDataIsFalse(t *testing.T) {
+	emptyStringCheck, _ := IsEmptyString.Check([]interface{}{"d"}, []string{})
+	if emptyStringCheck {
+		t.Errorf("Expected IsEmptyString to return true, but got false.")
+	}
+}
+
+func TestIsEmptyStringNilValueIsFalse(t *testing.T) {
+	emptyStringCheck, _ := IsEmptyString.Check([]interface{}{nil}, []string{})
+	if emptyStringCheck {
+		t.Errorf("Expected IsEmptyString to return true, but got false.")
 	}
 }

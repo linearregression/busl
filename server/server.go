@@ -3,13 +3,13 @@ package server
 import (
 	"bufio"
 	"github.com/cyberdelia/pat"
+	"github.com/naaman/busl/assets"
 	"github.com/naaman/busl/broker"
 	"github.com/naaman/busl/util"
 	"io"
 	"log"
 	"net/http"
 	"time"
-	"github.com/naaman/busl/assets"
 )
 
 func mkstream(w http.ResponseWriter, _ *http.Request) {
