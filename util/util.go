@@ -21,6 +21,13 @@ func NewUUID() (UUID, error) {
 	return UUID(hex.EncodeToString(uuid)), nil
 }
 
+type NullByte []byte
+
+func (nb NullByte) Get() []byte {
+	nb = []byte{0}
+	return nb
+}
+
 type StringSliceUtil []string
 
 func (s StringSliceUtil) Contains(check string) bool {
