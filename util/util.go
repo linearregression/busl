@@ -23,6 +23,10 @@ func NewUUID() (UUID, error) {
 
 type NullByte []byte
 
+func GetNullByte() []byte {
+	return new(NullByte).Get()
+}
+
 func (nb NullByte) Get() []byte {
 	nb = []byte{0}
 	return nb

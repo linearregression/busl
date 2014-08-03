@@ -93,7 +93,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		case t, tOk := <-timer.C:
 			if tOk {
 				util.Count("server.sub.keepAlive")
-				w.Write(new(util.NullByte).Get())
+				w.Write(util.GetNullByte())
 				f.Flush()
 				timer.Reset(*util.HeartbeatDuration)
 			} else {
