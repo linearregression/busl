@@ -2,54 +2,31 @@ package util_test
 
 import (
 	. "github.com/naaman/busl/util"
+	check "gopkg.in/check.v1"
 	"testing"
 )
 
-func TestIsTrueTrueValueIsTrue(t *testing.T) {
-	trueCheck, _ := IsTrue.Check([]interface{}{true}, []string{})
-	if !trueCheck {
-		t.Errorf("Expected IsTrue to return true, but got false.")
-	}
+type checkerTest struct {
+	check    check.Checker
+	input    []interface{}
+	expected bool
 }
 
-func TestIsTrueFalseValueIsFalse(t *testing.T) {
-	trueCheck, _ := IsTrue.Check([]interface{}{false}, []string{})
-	if trueCheck {
-		t.Errorf("Expected IsTrue to return false, but got true.")
-	}
+var checkerTests = []checkerTest{
+	checkerTest{IsTrue, []interface{}{true}, true},
+	checkerTest{IsTrue, []interface{}{false}, false},
+	checkerTest{IsFalse, []interface{}{false}, true},
+	checkerTest{IsFalse, []interface{}{true}, false},
+	checkerTest{IsEmptyString, []interface{}{""}, true},
+	checkerTest{IsEmptyString, []interface{}{"d"}, false},
+	checkerTest{IsEmptyString, []interface{}{nil}, false},
 }
 
-func TestIsFalseFalseValueIsTrue(t *testing.T) {
-	falseCheck, _ := IsFalse.Check([]interface{}{false}, []string{})
-	if !falseCheck {
-		t.Errorf("Expected IsFalse to return true, but got false.")
-	}
-}
-
-func TestIsFalseTrueValueIsFalse(t *testing.T) {
-	falseCheck, _ := IsFalse.Check([]interface{}{true}, []string{})
-	if falseCheck {
-		t.Errorf("Expected IsFalse to return false, but got true.")
-	}
-}
-
-func TestIsEmptyStringEmptyStringValueIsTrue(t *testing.T) {
-	emptyStringCheck, _ := IsEmptyString.Check([]interface{}{""}, []string{})
-	if !emptyStringCheck {
-		t.Errorf("Expected IsEmptyString to return true, but got false.")
-	}
-}
-
-func TestIsEmptyStringStringWithDataIsFalse(t *testing.T) {
-	emptyStringCheck, _ := IsEmptyString.Check([]interface{}{"d"}, []string{})
-	if emptyStringCheck {
-		t.Errorf("Expected IsEmptyString to return true, but got false.")
-	}
-}
-
-func TestIsEmptyStringNilValueIsFalse(t *testing.T) {
-	emptyStringCheck, _ := IsEmptyString.Check([]interface{}{nil}, []string{})
-	if emptyStringCheck {
-		t.Errorf("Expected IsEmptyString to return true, but got false.")
+func TestCheckers(t *testing.T) {
+	for _, c := range checkerTests {
+		actual, _ := c.check.Check(c.input, []string{})
+		if actual != c.expected {
+			t.Errorf("Expected %T to return %v, but got %v.", c.check, c.expected, actual)
+		}
 	}
 }
