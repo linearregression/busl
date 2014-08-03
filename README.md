@@ -13,21 +13,48 @@ a simple pubsub service that runs on Heroku.
 create a stream:
 
 ```
-$ export STREAM_ID=$(curl busl.herokuapp.com/streams -X POST)
+$ export STREAM_ID=$(curl http://localhost:5001/streams -X POST)
 b7e586c8404b74e1805f5a9543bc516f
 ```
 
 connect a consumer using the stream id:
 
 ```
-$ curl busl.herokuapp.com/streams/$STREAM_ID
+$ curl http://localhost:5001/streams/$STREAM_ID
 ...
 ```
 
 in a separate terminal, produce some data using the same stream id...
 
 ```
-$ curl busl.herokuapp.com/streams/$STREAM_ID -X POST
+$ curl http://localhost:5001/streams/$STREAM_ID -X POST
 ```
 
 ...and you see the busl.
+
+## setup
+
+to setup to test and run busl, setup [godep](http://godoc.org/github.com/tools/godep)
+and then:
+
+```sh
+$ godep go install
+$ cp .sample.env .env
+$ export $(cat .env)
+```
+
+## test
+
+to run tests:
+
+```sh
+$ godep go test ./...
+```
+
+## run
+
+to run the server:
+
+```sh
+$ godep go run main.go
+```
