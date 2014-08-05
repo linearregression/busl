@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"io/ioutil"
+	"io"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -20,7 +22,11 @@ var _ = Suite(&HttpServerSuite{})
 var sf = fmt.Sprintf
 
 func newRequest(method, url, body string) *http.Request {
-	request, _ := http.NewRequest(method, url, bytes.NewBufferString(body))
+	return newRequestFromReader(method, url, bytes.NewBufferString(body))
+}
+
+func newRequestFromReader(method, url string, reader io.Reader) *http.Request {
+	request, _ := http.NewRequest(method, url, reader)
 	urlParts := strings.Split(url, "/")
 	if method == "POST" {
 		request.TransferEncoding = []string{"chunked"}
@@ -88,6 +94,44 @@ func (s *HttpServerSuite) TestSub(c *C) {
 
 	c.Assert(response.Code, Equals, http.StatusOK)
 	c.Assert(response.Body.String(), Equals, "busl1")
+}
+
+func (s *HttpServerSuite) TestPubSub(c *C) {
+	streamId, _ := NewUUID()
+	registrar := broker.NewRedisRegistrar()
+	registrar.Register(streamId)
+
+	body := new(bytes.Buffer)
+	bodyCloser := ioutil.NopCloser(body)
+
+	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
+	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
+
+	pubBlocker := make(chan bool)
+	go func() {
+		pub(pubResponse, pubRequest)
+		pubBlocker <- true
+	}()
+
+	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
+	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
+
+	subBlocker := make(chan bool)
+	go func() {
+		sub(subResponse, subRequest)
+		subBlocker <- true
+	}()
+
+	for _, m := range []string{"first", " ", "second", " ", "third"} {
+		body.Write([]byte(m))
+	}
+
+	bodyCloser.Close()
+	<- pubBlocker
+	<- subBlocker
+
+	c.Assert(subResponse.Code, Equals, http.StatusOK)
+	c.Assert(subResponse.Body.String(), Equals, "first second third")
 }
 
 type CloseNotifierRecorder struct {
