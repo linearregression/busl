@@ -105,6 +105,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 				timer.Reset(*util.HeartbeatDuration)
 				w.Write(msg)
 				f.Flush()
+				continue
 			} else {
 				timer.Stop()
 				return
@@ -115,6 +116,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 				w.Write(util.GetNullByte())
 				f.Flush()
 				timer.Reset(*util.HeartbeatDuration)
+				continue
 			} else {
 				util.CountWithData("server.sub.keepAlive.failed", 1, "timer=%v timerChannel=%v", timer, t)
 				timer.Stop()
