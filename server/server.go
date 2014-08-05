@@ -41,12 +41,31 @@ func pub(w http.ResponseWriter, r *http.Request) {
 	msgBroker := broker.NewRedisBroker(uuid)
 	defer msgBroker.UnsubscribeAll()
 
-	scanner := bufio.NewScanner(r.Body)
+	bodyBuffer := bufio.NewReader(r.Body)
 	defer r.Body.Close()
-	scanner.Split(bufio.ScanLines)
 
-	for scanner.Scan() {
-		msgBroker.Publish([]byte(scanner.Text() + "\n"))
+	buffer := make([]byte, 4096)
+
+	for {
+		readLen, err := bodyBuffer.Read(buffer)
+
+		switch {
+		case err == io.EOF, err == io.ErrUnexpectedEOF:
+			util.CountWithData("server.pub.read.eoferror", 1, "msg=\"%v\"", err.Error())
+			return
+		case err != nil:
+			log.Printf("%#v", err)
+			http.Error(w, "Unhandled error, please try again.", http.StatusInternalServerError)
+			return
+		}
+
+		if readLen > 0 {
+			msg := make([]byte, readLen)
+			copy(msg, buffer[:readLen])
+			msgBroker.Publish(msg)
+		} else {
+			return
+		}
 	}
 }
 
