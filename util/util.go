@@ -3,8 +3,8 @@ package util
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"log"
 	"fmt"
+	"log"
 	"time"
 )
 

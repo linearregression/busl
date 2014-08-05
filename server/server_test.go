@@ -6,12 +6,12 @@ import (
 	"github.com/naaman/busl/broker"
 	. "github.com/naaman/busl/util"
 	. "gopkg.in/check.v1"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"io/ioutil"
-	"io"
 	"time"
 )
 
@@ -91,7 +91,7 @@ func (s *HttpServerSuite) TestSub(c *C) {
 
 	publisher.Publish([]byte("busl1"))
 	publisher.UnsubscribeAll()
-	<- waiter
+	<-waiter
 
 	c.Assert(response.Code, Equals, http.StatusOK)
 	c.Assert(response.Body.String(), Equals, "busl1")
@@ -108,14 +108,14 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
 	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	pubBlocker := TimeoutFunc(time.Millisecond * 5, func() {
+	pubBlocker := TimeoutFunc(time.Millisecond*5, func() {
 		pub(pubResponse, pubRequest)
 	})
 
 	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
 	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	subBlocker := TimeoutFunc(time.Millisecond * 5, func() {
+	subBlocker := TimeoutFunc(time.Millisecond*5, func() {
 		sub(subResponse, subRequest)
 	})
 
@@ -124,8 +124,8 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 	}
 
 	bodyCloser.Close()
-	<- pubBlocker
-	<- subBlocker
+	<-pubBlocker
+	<-subBlocker
 
 	c.Assert(subResponse.Code, Equals, http.StatusOK)
 	c.Assert(subResponse.Body.String(), Equals, "first second third")
