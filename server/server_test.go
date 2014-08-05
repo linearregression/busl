@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -74,15 +73,18 @@ func (s *HttpServerSuite) TestSub(c *C) {
 	registrar := broker.NewRedisRegistrar()
 	registrar.Register(streamId)
 	publisher := broker.NewRedisBroker(streamId)
-	publisher.Publish([]byte("busl1"))
 
 	request := newRequest("GET", sf("/streams/%s", streamId), "")
 	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
+	waiter := make(chan bool)
+	go func() {
+		sub(response, request)
+		waiter <- true
+	}()
 
-	time.AfterFunc(time.Millisecond*50, func() {
-		response.close()
-	})
-	sub(response, request)
+	publisher.Publish([]byte("busl1"))
+	publisher.UnsubscribeAll()
+	<- waiter
 
 	c.Assert(response.Code, Equals, http.StatusOK)
 	c.Assert(response.Body.String(), Equals, "busl1")
