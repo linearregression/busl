@@ -12,6 +12,7 @@ import (
 	"testing"
 	"io/ioutil"
 	"io"
+	"time"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -107,20 +108,16 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
 	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	pubBlocker := make(chan bool)
-	go func() {
+	pubBlocker := TimeoutFunc(time.Millisecond * 5, func() {
 		pub(pubResponse, pubRequest)
-		pubBlocker <- true
-	}()
+	})
 
 	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
 	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	subBlocker := make(chan bool)
-	go func() {
+	subBlocker := TimeoutFunc(time.Millisecond * 5, func() {
 		sub(subResponse, subRequest)
-		subBlocker <- true
-	}()
+	})
 
 	for _, m := range []string{"first", " ", "second", " ", "third"} {
 		body.Write([]byte(m))
