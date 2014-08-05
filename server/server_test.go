@@ -18,6 +18,7 @@ func Test(t *testing.T) { TestingT(t) }
 type HttpServerSuite struct{}
 
 var _ = Suite(&HttpServerSuite{})
+var sf = fmt.Sprintf
 
 func newRequest(method, url, body string) *http.Request {
 	request, _ := http.NewRequest(method, url, bytes.NewBufferString(body))
@@ -75,7 +76,7 @@ func (s *HttpServerSuite) TestSub(c *C) {
 	publisher := broker.NewRedisBroker(streamId)
 	publisher.Publish([]byte("busl1"))
 
-	request := newRequest("GET", fmt.Sprintf("/streams/%s", streamId), "")
+	request := newRequest("GET", sf("/streams/%s", streamId), "")
 	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
 	time.AfterFunc(time.Millisecond*50, func() {
