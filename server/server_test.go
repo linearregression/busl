@@ -73,7 +73,7 @@ func (s *HttpServerSuite) TestSub(c *C) {
 	registrar := broker.NewRedisRegistrar()
 	registrar.Register(streamId)
 	publisher := broker.NewRedisBroker(streamId)
-	publisher.Publish([]byte("busl1\n"))
+	publisher.Publish([]byte("busl1"))
 
 	request := newRequest("GET", fmt.Sprintf("/streams/%s", streamId), "")
 	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
@@ -84,7 +84,7 @@ func (s *HttpServerSuite) TestSub(c *C) {
 	sub(response, request)
 
 	c.Assert(response.Code, Equals, http.StatusOK)
-	c.Assert(response.Body.String(), Equals, "busl1\n")
+	c.Assert(response.Body.String(), Equals, "busl1")
 }
 
 type CloseNotifierRecorder struct {
