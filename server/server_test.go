@@ -83,11 +83,10 @@ func (s *HttpServerSuite) TestSub(c *C) {
 
 	request := newRequest("GET", sf("/streams/%s", streamId), "")
 	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
-	waiter := make(chan bool)
-	go func() {
+
+	waiter := TimeoutFunc(time.Millisecond*5, func() {
 		sub(response, request)
-		waiter <- true
-	}()
+	})
 
 	publisher.Publish([]byte("busl1"))
 	publisher.UnsubscribeAll()
