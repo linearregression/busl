@@ -130,6 +130,41 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 	c.Assert(subResponse.Body.String(), Equals, "first second third")
 }
 
+func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
+	streamId, _ := NewUUID()
+	registrar := broker.NewRedisRegistrar()
+	registrar.Register(streamId)
+
+	body := new(bytes.Buffer)
+	bodyCloser := ioutil.NopCloser(body)
+
+	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
+	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
+
+	pubBlocker := TimeoutFunc(time.Millisecond*5, func() {
+		pub(pubResponse, pubRequest)
+	})
+
+	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
+	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
+
+	subBlocker := TimeoutFunc(time.Millisecond*5, func() {
+		sub(subResponse, subRequest)
+	})
+
+	expected := []byte{0x1f, 0x8b, 0x08, 0x00, 0x3f, 0x6b, 0xe1, 0x53, 0x00, 0x03, 0xed, 0xce, 0xb1, 0x0a, 0xc2, 0x30}
+	for _, m := range expected {
+		body.Write([]byte{m})
+	}
+
+	bodyCloser.Close()
+	<-pubBlocker
+	<-subBlocker
+
+	c.Assert(subResponse.Code, Equals, http.StatusOK)
+	c.Assert(subResponse.Body.Bytes(), DeepEquals, expected)
+}
+
 type CloseNotifierRecorder struct {
 	*httptest.ResponseRecorder
 	closed chan bool
