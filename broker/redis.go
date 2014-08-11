@@ -88,10 +88,16 @@ type RedisBroker struct {
 	channel     channel
 	subscribers map[chan []byte]bool
 	psc         redis.PubSubConn
+	position    int64
 }
 
 func NewRedisBroker(uuid util.UUID) *RedisBroker {
-	broker := &RedisBroker{channel(uuid), make(map[chan []byte]bool), redis.PubSubConn{}}
+	broker := &RedisBroker{
+		channel(uuid),
+		make(map[chan []byte]bool),
+		redis.PubSubConn{},
+		0,
+	}
 
 	return broker
 }
@@ -110,13 +116,14 @@ func (b *RedisBroker) Subscribe() (ch chan []byte, err error) {
 func (b *RedisBroker) redisSubscribe(ch chan []byte) {
 	conn := redisPool.Get()
 	defer conn.Close()
-	b.psc = redis.PubSubConn{conn}
-	b.psc.PSubscribe(b.channel.wildcardId())
 
 	if err := b.replay(ch); err != nil {
 		b.Unsubscribe(ch)
 		return
 	}
+
+	b.psc = redis.PubSubConn{conn}
+	b.psc.PSubscribe(b.channel.wildcardId())
 
 	for {
 		switch msg := b.psc.Receive().(type) {
@@ -127,13 +134,24 @@ func (b *RedisBroker) redisSubscribe(ch chan []byte) {
 				b.psc.PUnsubscribe(b.channel.wildcardId())
 			case b.channel.id():
 				if b.subscribers[ch] {
-					ch <- msg.Data
+					subscSlice, _ := conn.Do("GETRANGE", b.channel.id(), b.position, msg.Data)
+					subscSliceBytes := subscSlice.([]byte)
+					log.Println("position: " + string(msg.Data))
+					ch <- subscSliceBytes
+					b.position = b.position + int64(len(subscSliceBytes))
 				} else {
 					return
 				}
 			}
 		case redis.Subscription:
 			if msg.Kind == "punsubscribe" || msg.Kind == "unsubscribe" {
+				subscSlice, _ := conn.Do("GETRANGE", b.channel.id(), b.position, "-1")
+				subscSliceBytes := subscSlice.(interface{}).([]byte)
+				if len(subscSliceBytes) > 0 {
+					ch <- subscSliceBytes
+					b.position = b.position + int64(len(subscSliceBytes))
+				}
+
 				util.Count("RedisBroker.redisSubscribe.Channel.unsubscribe")
 				b.Unsubscribe(ch)
 				return
@@ -175,15 +193,17 @@ func (b *RedisBroker) publishOn(msg []byte) {
 	defer conn.Close()
 
 	conn.Send("MULTI")
-	conn.Send("PUBLISH", b.channel.id(), msg)
 	conn.Send("APPEND", b.channel.id(), msg)
 	conn.Send("EXPIRE", b.channel.id(), redisKeyExpire)
 	conn.Send("DEL", b.channel.doneId())
 
-	_, err := conn.Do("EXEC")
+	appendResult, err := conn.Do("EXEC")
 	if err != nil {
 		util.CountWithData("RedisBroker.publishOn.error", 1, "error=%s", err)
 	}
+
+	appendedLen := appendResult.([]interface{})[0].(int64)
+	conn.Send("PUBLISH", b.channel.id(), appendedLen)
 }
 
 func (b *RedisBroker) replay(ch chan []byte) (err error) {
@@ -204,6 +224,7 @@ func (b *RedisBroker) replay(ch chan []byte) (err error) {
 	buffer, channelDone := getRedisByteArray(resultArray[0]), getRedisByteArray(resultArray[1])
 
 	if buffer != nil {
+		b.position = int64(len(buffer))
 		ch <- buffer
 	}
 
