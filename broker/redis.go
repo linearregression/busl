@@ -134,11 +134,8 @@ func (b *RedisBroker) redisSubscribe(ch chan []byte) {
 				b.psc.PUnsubscribe(b.channel.wildcardId())
 			case b.channel.id():
 				if b.subscribers[ch] {
-					subscSlice, _ := conn.Do("GETRANGE", b.channel.id(), b.position, msg.Data)
-					subscSliceBytes := subscSlice.([]byte)
-					log.Println("position: " + string(msg.Data))
-					ch <- subscSliceBytes
-					b.position = b.position + int64(len(subscSliceBytes))
+					data := b.getRange(msg.Data)
+					ch <- data
 				} else {
 					return
 				}
@@ -234,6 +231,21 @@ func (b *RedisBroker) replay(ch chan []byte) (err error) {
 	}
 
 	return
+}
+
+func (b *RedisBroker) getRange(newRange []byte) []byte {
+	conn := redisPool.Get()
+	defer conn.Close()
+	subscSlice, err := conn.Do("GETRANGE", b.channel.id(), b.position, newRange)
+	if err != nil {
+		log.Println(err)
+		return []byte{}
+	} else {
+		subscSliceBytes := subscSlice.([]byte)
+		log.Println("position: " + string(newRange))
+		b.position = b.position+int64(len(subscSliceBytes))
+		return subscSliceBytes
+	}
 }
 
 func getRedisByteArray(v interface{}) []byte {
