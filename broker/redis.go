@@ -142,13 +142,9 @@ func (b *RedisBroker) redisSubscribe(ch chan []byte) {
 			}
 		case redis.Subscription:
 			if msg.Kind == "punsubscribe" || msg.Kind == "unsubscribe" {
-				subscSlice, _ := conn.Do("GETRANGE", b.channel.id(), b.position, "-1")
-				subscSliceBytes := subscSlice.(interface{}).([]byte)
-				if len(subscSliceBytes) > 0 {
-					ch <- subscSliceBytes
-					b.position = b.position + int64(len(subscSliceBytes))
-				}
-
+				subscSlice := b.getRange([]byte("-1"))
+				ch <- subscSlice
+				
 				util.Count("RedisBroker.redisSubscribe.Channel.unsubscribe")
 				b.Unsubscribe(ch)
 				return
