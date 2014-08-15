@@ -11,7 +11,7 @@ create a stream:
 
 ```
 $ export STREAM_ID=$(curl http://localhost:5001/streams -X POST)
-b7e586c8404b74e1805f5a9543bc516f
+# STREAM_ID=b7e586c8404b74e1805f5a9543bc516f
 ```
 
 connect a consumer using the stream id:
