@@ -242,7 +242,6 @@ func (b *RedisBroker) getRange(newRange []byte) []byte {
 		return []byte{}
 	} else {
 		subscSliceBytes := subscSlice.([]byte)
-		log.Println("position: " + string(newRange))
 		b.position = b.position+int64(len(subscSliceBytes))
 		return subscSliceBytes
 	}
