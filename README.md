@@ -1,12 +1,9 @@
-# <img src="https://i.cloudup.com/WSKggRp4ZX.svg" width=78 /> <br/> busl
+# <img src="https://i.cloudup.com/WSKggRp4ZX.svg" width=78 /> <br/> busl [![Build Status](https://travis-ci.org/naaman/busl.svg?branch=master)](https://travis-ci.org/naaman/busl)
+
 
 busl - the bustle part of hustle.
 
 a simple pubsub service that runs on Heroku.
-
-[![Build Status](https://travis-ci.org/naaman/busl.svg?branch=master)](https://travis-ci.org/naaman/busl)
-
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
 
 ## usage
 
@@ -58,3 +55,7 @@ to run the server:
 ```sh
 $ godep go run main.go
 ```
+
+## deploy
+
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
