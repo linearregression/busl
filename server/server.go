@@ -136,12 +136,24 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	f.Flush()
 }
 
+func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if origin := r.Header.Get("Origin"); origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		fn(w, r)
+	}
+}
+
 func Start() {
 	p := pat.New()
 
 	p.PostFunc("/streams", mkstream)
 	p.PostFunc("/streams/:uuid", pub)
-	p.GetFunc("/streams/:uuid", sub)
+	p.GetFunc("/streams/:uuid", addDefaultHeaders(sub))
 
 	http.Handle("/", p)
 
