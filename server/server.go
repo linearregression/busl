@@ -151,8 +151,8 @@ func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
 func Start() {
 	p := pat.New()
 
-	p.PostFunc("/streams", mkstream)
-	p.PostFunc("/streams/:uuid", pub)
+	p.PostFunc("/streams", addDefaultHeaders(mkstream))
+	p.PostFunc("/streams/:uuid", addDefaultHeaders(pub))
 	p.GetFunc("/streams/:uuid", addDefaultHeaders(sub))
 
 	http.Handle("/", p)
