@@ -111,6 +111,8 @@ func (b *RedisBroker) Subscribe() (ch chan []byte, err error) {
 		return nil, errors.New("Channel is not registered.")
 	}
 
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
 	ch = make(chan []byte, msgBuf)
 	b.subscribers[ch] = true
 	go b.redisSubscribe(ch)
@@ -164,6 +166,9 @@ func (b *RedisBroker) Unsubscribe(ch chan []byte) {
 	if b.subscribers[ch] {
 		close(ch)
 	}
+
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
 	delete(b.subscribers, ch)
 }
 
