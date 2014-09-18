@@ -3,12 +3,14 @@ package broker
 import (
 	"errors"
 	"flag"
-	"github.com/garyburd/redigo/redis"
-	"github.com/naaman/busl/util"
 	"log"
 	"net/url"
 	"os"
+	"sync"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
+	"github.com/naaman/busl/util"
 )
 
 const (
@@ -89,6 +91,7 @@ type RedisBroker struct {
 	subscribers map[chan []byte]bool
 	psc         redis.PubSubConn
 	position    int64
+	mutex       *sync.Mutex
 }
 
 func NewRedisBroker(uuid util.UUID) *RedisBroker {
@@ -97,6 +100,7 @@ func NewRedisBroker(uuid util.UUID) *RedisBroker {
 		make(map[chan []byte]bool),
 		redis.PubSubConn{},
 		0,
+		&sync.Mutex{},
 	}
 
 	return broker
