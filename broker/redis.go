@@ -199,12 +199,11 @@ func (b *RedisBroker) publishOn(msg []byte) {
 	conn.Send("EXPIRE", b.channel.id(), redisKeyExpire)
 	conn.Send("DEL", b.channel.doneId())
 
-	appendResult, err := conn.Do("EXEC")
+	appendedLen, err := redis.Int64(conn.Do("EXEC"))
 	if err != nil {
 		util.CountWithData("RedisBroker.publishOn.error", 1, "error=%s", err)
 	}
 
-	appendedLen := appendResult.([]interface{})[0].(int64)
 	conn.Send("PUBLISH", b.channel.id(), appendedLen)
 }
 
