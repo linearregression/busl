@@ -239,14 +239,13 @@ func (b *RedisBroker) replay(ch chan []byte) (err error) {
 func (b *RedisBroker) getRange(newRange []byte) []byte {
 	conn := redisPool.Get()
 	defer conn.Close()
-	subscSlice, err := conn.Do("GETRANGE", b.channel.id(), b.position, newRange)
+	subscSlice, err := redis.Bytes(conn.Do("GETRANGE", b.channel.id(), b.position, newRange))
 	if err != nil {
 		log.Println(err)
 		return []byte{}
 	} else {
-		subscSliceBytes := subscSlice.([]byte)
-		b.position = b.position + int64(len(subscSliceBytes))
-		return subscSliceBytes
+		b.position = b.position + int64(len(subscSlice))
+		return subscSlice
 	}
 }
 
