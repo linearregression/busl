@@ -215,14 +215,13 @@ func (b *RedisBroker) replay(ch chan []byte) (err error) {
 		return errors.New("Channel already closed.")
 	}
 
-	result, err := conn.Do("MGET", b.channel.id(), b.channel.doneId())
+	result, err := redis.Values(conn.Do("MGET", b.channel.id(), b.channel.doneId()))
 	if err != nil {
 		util.CountWithData("RedisBroker.publishOn.error", 1, "error=%s", err)
 		return
 	}
 
-	resultArray := result.([]interface{})
-	buffer, channelDone := getRedisByteArray(resultArray[0]), getRedisByteArray(resultArray[1])
+	buffer, channelDone := getRedisByteArray(result[0]), getRedisByteArray(result[1])
 
 	if buffer != nil {
 		b.position = int64(len(buffer))
