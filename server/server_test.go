@@ -3,8 +3,8 @@ package server
 import (
 	"bytes"
 	"fmt"
-	"github.com/naaman/busl/broker"
-	. "github.com/naaman/busl/util"
+	"github.com/heroku/busl/broker"
+	. "github.com/heroku/busl/util"
 	. "gopkg.in/check.v1"
 	"io"
 	"io/ioutil"

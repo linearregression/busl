@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/naaman/busl",
+	"ImportPath": "github.com/heroku/busl",
 	"GoVersion": "go1.2",
 	"Deps": [
 		{

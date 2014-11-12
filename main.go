@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/naaman/busl/server"
+	"github.com/heroku/busl/server"
 )
 
 func main() {

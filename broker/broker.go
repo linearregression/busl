@@ -1,7 +1,7 @@
 package broker
 
 import (
-	"github.com/naaman/busl/util"
+	"github.com/heroku/busl/util"
 )
 
 type Broker interface {

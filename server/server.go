@@ -3,9 +3,9 @@ package server
 import (
 	"bufio"
 	"github.com/cyberdelia/pat"
-	"github.com/naaman/busl/assets"
-	"github.com/naaman/busl/broker"
-	"github.com/naaman/busl/util"
+	"github.com/heroku/busl/assets"
+	"github.com/heroku/busl/broker"
+	"github.com/heroku/busl/util"
 	"io"
 	"log"
 	"net/http"

@@ -1,7 +1,7 @@
 package util_test
 
 import (
-	. "github.com/naaman/busl/util"
+	. "github.com/heroku/busl/util"
 	check "gopkg.in/check.v1"
 	"testing"
 )

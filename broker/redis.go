@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/naaman/busl/util"
+	"github.com/heroku/busl/util"
 )
 
 const (

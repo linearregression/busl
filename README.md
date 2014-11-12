@@ -1,4 +1,4 @@
-# <img src="https://i.cloudup.com/WSKggRp4ZX.svg" width=78 /> <br/> busl [![Build Status](https://travis-ci.org/naaman/busl.svg?branch=master)](https://travis-ci.org/naaman/busl)
+# <img src="https://i.cloudup.com/WSKggRp4ZX.svg" width=78 /> <br/> busl [![Build Status](https://travis-ci.org/heroku/busl.svg?branch=master)](https://travis-ci.org/heroku/busl)
 
 
 busl - the bustle part of hustle.

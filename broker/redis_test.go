@@ -1,8 +1,8 @@
 package broker_test
 
 import (
-	. "github.com/naaman/busl/broker"
-	u "github.com/naaman/busl/util"
+	. "github.com/heroku/busl/broker"
+	u "github.com/heroku/busl/util"
 	. "gopkg.in/check.v1"
 	"testing"
 )
