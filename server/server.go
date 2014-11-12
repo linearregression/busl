@@ -2,14 +2,16 @@ package server
 
 import (
 	"bufio"
-	"github.com/cyberdelia/pat"
-	"github.com/heroku/busl/assets"
-	"github.com/heroku/busl/broker"
-	"github.com/heroku/busl/util"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/cyberdelia/pat"
+	"github.com/heroku/busl/assets"
+	"github.com/heroku/busl/broker"
+	"github.com/heroku/busl/util"
 )
 
 func mkstream(w http.ResponseWriter, _ *http.Request) {
@@ -28,6 +30,10 @@ func mkstream(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	io.WriteString(w, string(uuid))
+}
+
+func health(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "OK")
 }
 
 func pub(w http.ResponseWriter, r *http.Request) {
@@ -151,6 +157,7 @@ func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
 func Start() {
 	p := pat.New()
 
+	p.GetFunc("/health", addDefaultHeaders(health))
 	p.PostFunc("/streams", addDefaultHeaders(mkstream))
 	p.PostFunc("/streams/:uuid", addDefaultHeaders(pub))
 	p.GetFunc("/streams/:uuid", addDefaultHeaders(sub))
