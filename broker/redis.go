@@ -247,6 +247,7 @@ func (b *RedisBroker) getRange(newRange []byte) []byte {
 		log.Println(err)
 		return []byte{}
 	} else {
+		// TODO: Add mutex
 		b.position = b.position + int64(len(subscSlice))
 		return subscSlice
 	}
