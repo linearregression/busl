@@ -162,7 +162,7 @@ func Start() {
 	p.PostFunc("/streams/:uuid", addDefaultHeaders(pub))
 	p.GetFunc("/streams/:uuid", addDefaultHeaders(sub))
 
-	http.HandleFunc("/", p.ServeHTTP)
+	http.HandleFunc("/", enforceHTTPS(p.ServeHTTP))
 
 	if err := http.ListenAndServe(":"+*util.HttpPort, nil); err != nil {
 		panic(err)
