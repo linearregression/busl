@@ -2,9 +2,15 @@ package server
 
 import (
 	"net/http"
+
+	"github.com/heroku/busl/util"
 )
 
 func enforceHTTPS(ƒ http.HandlerFunc) http.HandlerFunc {
+	if !*util.EnforceHTTPS {
+		return ƒ
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		if proto := r.Header.Get("X-Forwarded-Proto"); proto != "https" {
 			url := r.URL
