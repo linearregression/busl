@@ -24,7 +24,7 @@ $ curl http://localhost:5001/streams/$STREAM_ID
 in a separate terminal, produce some data using the same stream id...
 
 ```
-$ curl http://localhost:5001/streams/$STREAM_ID -X POST
+$ curl -H "Transfer-Encoding: chunked" http://localhost:5001/streams/$STREAM_ID -X POST
 ```
 
 ...and you see the busl.
