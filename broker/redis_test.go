@@ -1,10 +1,12 @@
 package broker_test
 
 import (
+	"testing"
+	"time"
+
 	. "github.com/heroku/busl/broker"
 	u "github.com/heroku/busl/util"
 	. "gopkg.in/check.v1"
-	"testing"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -70,6 +72,8 @@ func (s *BrokerSuite) TestRedisSubscribe(c *C) {
 	ch, _ := s.broker.Subscribe()
 	defer s.broker.Unsubscribe(ch)
 	s.broker.Publish([]byte("busl"))
+	// sleep 1 second to avoid race condition on Travis :(
+	time.Sleep(1 * time.Second)
 	c.Assert(string(<-ch), Equals, "busl")
 }
 

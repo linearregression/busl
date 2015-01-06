@@ -12,6 +12,7 @@ import (
 	"github.com/heroku/busl/assets"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/util"
+	"github.com/heroku/rollbar"
 )
 
 func mkstream(w http.ResponseWriter, _ *http.Request) {
@@ -20,12 +21,14 @@ func mkstream(w http.ResponseWriter, _ *http.Request) {
 	if err != nil {
 		log.Printf("%v", err)
 		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
+		rollbar.Error(rollbar.ERR, fmt.Errorf("unable to create new uuid for stream: %#v", err))
 		return
 	}
 
 	if err := registrar.Register(uuid); err != nil {
 		log.Printf("%v", err)
 		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
+		rollbar.Error(rollbar.ERR, fmt.Errorf("unable to register stream: %#v", err))
 		return
 	}
 
@@ -55,16 +58,6 @@ func pub(w http.ResponseWriter, r *http.Request) {
 	for {
 		readLen, err := bodyBuffer.Read(buffer)
 
-		switch {
-		case err == io.EOF, err == io.ErrUnexpectedEOF:
-			util.CountWithData("server.pub.read.eoferror", 1, "msg=\"%v\"", err.Error())
-			return
-		case err != nil:
-			log.Printf("%#v", err)
-			http.Error(w, "Unhandled error, please try again.", http.StatusInternalServerError)
-			return
-		}
-
 		if readLen > 0 {
 			msg := make([]byte, readLen)
 			copy(msg, buffer[:readLen])
@@ -72,6 +65,20 @@ func pub(w http.ResponseWriter, r *http.Request) {
 		} else {
 			return
 		}
+
+		switch {
+		case err == io.ErrUnexpectedEOF:
+			util.CountWithData("server.pub.read.eoferror", 1, "msg=\"%v\"", err.Error())
+			return
+		case err == io.EOF:
+			return
+		case err != nil:
+			log.Printf("%#v", err)
+			http.Error(w, "Unhandled error, please try again.", http.StatusInternalServerError)
+			rollbar.Error(rollbar.ERR, fmt.Errorf("unhandled error: %#v", err))
+			return
+		}
+
 	}
 }
 

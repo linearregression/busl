@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/heroku/busl",
-	"GoVersion": "go1.2",
+	"GoVersion": "go1.4",
 	"Deps": [
 		{
 			"ImportPath": "github.com/cyberdelia/pat",
@@ -8,7 +8,12 @@
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Rev": "a6a0a737c00caf4d4c2bb589941ace0d688168bb"
+			"Rev": "61e2910408efd40dafb3c7d856a4cf8aeb5fb1c6"
+		},
+		{
+			"ImportPath": "github.com/heroku/rollbar",
+			"Comment": "v0.3.0",
+			"Rev": "197e8a4fd165c96afe325b2297cf3bcaa5b9a6b4"
 		},
 		{
 			"ImportPath": "gopkg.in/check.v1",
