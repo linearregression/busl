@@ -6,14 +6,24 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"syscall"
 	"time"
 
+	"github.com/braintree/manners"
 	"github.com/cyberdelia/pat"
 	"github.com/heroku/busl/assets"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/util"
 	"github.com/heroku/rollbar"
 )
+
+var gracefulServer *manners.GracefulServer
+
+func init() {
+	gracefulServer = manners.NewServer()
+	gracefulServer.InnerServer.ReadTimeout = time.Hour
+	gracefulServer.InnerServer.WriteTimeout = time.Hour
+}
 
 func mkstream(w http.ResponseWriter, _ *http.Request) {
 	registrar := broker.NewRedisRegistrar()
@@ -58,6 +68,14 @@ func pub(w http.ResponseWriter, r *http.Request) {
 	for {
 		readLen, err := bodyBuffer.Read(buffer)
 
+		if readLen > 0 {
+			msg := make([]byte, readLen)
+			copy(msg, buffer[:readLen])
+			msgBroker.Publish(msg)
+		} else {
+			return
+		}
+
 		switch {
 		case err == io.ErrUnexpectedEOF:
 			util.CountWithData("server.pub.read.eoferror", 1, "msg=\"%v\"", err.Error())
@@ -68,14 +86,6 @@ func pub(w http.ResponseWriter, r *http.Request) {
 			log.Printf("%#v", err)
 			http.Error(w, "Unhandled error, please try again.", http.StatusInternalServerError)
 			rollbar.Error(rollbar.ERR, fmt.Errorf("unhandled error: %#v", err))
-			return
-		}
-
-		if readLen > 0 {
-			msg := make([]byte, readLen)
-			copy(msg, buffer[:readLen])
-			msgBroker.Publish(msg)
-		} else {
 			return
 		}
 
@@ -171,7 +181,17 @@ func Start() {
 
 	http.HandleFunc("/", enforceHTTPS(p.ServeHTTP))
 
-	if err := http.ListenAndServe(":"+*util.HttpPort, nil); err != nil {
+	go listenForShutdown(util.AwaitSignals(syscall.SIGURG))
+
+	if err := gracefulServer.ListenAndServe(":"+*util.HttpPort, nil); err != nil {
 		panic(err)
 	}
+}
+
+func listenForShutdown(shutdown <-chan struct{}) {
+	log.Println("http.graceful.await")
+	<-shutdown
+	log.Println("http.graceful.shutdown")
+	gracefulServer.InnerServer.SetKeepAlivesEnabled(false) // TODO: Remove after merge of https://github.com/braintree/manners/pull/22
+	gracefulServer.Shutdown <- true
 }

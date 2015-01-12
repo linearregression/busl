@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+        "os"
+        "os/signal"
 	"time"
 )
 
@@ -67,4 +69,18 @@ func TimeoutFunc(d time.Duration, ƒ func()) (ch chan bool) {
 		ch <- true
 	}()
 	return ch
+}
+
+func AwaitSignals(signals ...os.Signal) <-chan struct{} {
+        s := make(chan os.Signal, 1)
+        signal.Notify(s, signals...)
+        log.Printf("signals.await signals=%v\n", signals)
+
+        received := make(chan struct{})
+        go func() {
+                log.Printf("signals.received signal=%v\n", <-s)
+                close(received)
+        }()
+
+        return received
 }
