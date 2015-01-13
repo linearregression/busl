@@ -1,14 +1,22 @@
 language: go
+
 go:
   - 1.4
+
+sudo: false
+
 services:
   - redis-server
+
 env:
-  REDIS_URL=redis://127.0.0.1:6379
+  - REDIS_URL=redis://127.0.0.1:6379
+
 before_install:
   - export PATH=$HOME/gopath/bin:$PATH
+
 install:
   - go get github.com/tools/godep
   - go get gopkg.in/check.v1
   - godep restore
+
 script: godep go test -v ./...
