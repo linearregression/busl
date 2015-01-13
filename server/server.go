@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"syscall"
 	"time"
 
 	"github.com/braintree/manners"
@@ -171,7 +170,7 @@ func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func Start() {
+func Start(port string, shutdown <-chan struct{}) {
 	p := pat.New()
 
 	p.GetFunc("/health", addDefaultHeaders(health))
@@ -181,9 +180,9 @@ func Start() {
 
 	http.HandleFunc("/", enforceHTTPS(p.ServeHTTP))
 
-	go listenForShutdown(util.AwaitSignals(syscall.SIGURG))
+	go listenForShutdown(shutdown)
 
-	if err := gracefulServer.ListenAndServe(":"+*util.HttpPort, nil); err != nil {
+	if err := gracefulServer.ListenAndServe(":"+port, nil); err != nil {
 		panic(err)
 	}
 }
