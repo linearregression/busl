@@ -20,8 +20,8 @@ var gracefulServer *manners.GracefulServer
 
 func init() {
 	gracefulServer = manners.NewServer()
-	gracefulServer.InnerServer.ReadTimeout = time.Hour
-	gracefulServer.InnerServer.WriteTimeout = time.Hour
+	gracefulServer.InnerServer.ReadTimeout = *util.HttpReadTimeout
+	gracefulServer.InnerServer.WriteTimeout = *util.HttpWriteTimeout
 }
 
 func mkstream(w http.ResponseWriter, _ *http.Request) {
