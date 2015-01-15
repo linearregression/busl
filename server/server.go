@@ -28,18 +28,20 @@ func mkstream(w http.ResponseWriter, _ *http.Request) {
 	registrar := broker.NewRedisRegistrar()
 	uuid, err := util.NewUUID()
 	if err != nil {
-		log.Printf("%v", err)
 		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
 		rollbar.Error(rollbar.ERR, fmt.Errorf("unable to create new uuid for stream: %#v", err))
+		util.CountWithData("mkstream.create.fail", 1, "error=%s", err)
 		return
 	}
 
 	if err := registrar.Register(uuid); err != nil {
-		log.Printf("%v", err)
 		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
 		rollbar.Error(rollbar.ERR, fmt.Errorf("unable to register stream: %#v", err))
+		util.CountWithData("mkstream.create.fail", 1, "error=%s", err)
 		return
 	}
+
+	util.Count("mkstream.create.success")
 
 	io.WriteString(w, string(uuid))
 }
