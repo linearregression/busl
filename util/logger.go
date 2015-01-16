@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -37,7 +36,7 @@ func environment(domain string) string {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}
-	s = append(s, prefix, strconv.Itoa(os.Getpid()))
+	s = append(s, prefix)
 	return strings.Join(s, ".")
 }
 
