@@ -29,6 +29,24 @@ func logRequest(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := util.NewResponseLogger(w)
 		fn(logger, r)
-		logger.WriteLog()
+		logger.WriteLog(requestId(r))
 	}
+}
+
+func requestId(r *http.Request) (id string) {
+	if id = r.Header.Get("Request-Id"); id == "" {
+		id = r.Header.Get("X-Request-Id")
+	}
+
+	if id == "" {
+		// In the event of a rare case where uuid
+		// generation fails, it's probably more
+		// desirable to continue as is with an empty
+		// request_id than to bubble the error up the
+		// stack.
+		uuid, _ := util.NewUUID()
+		id = string(uuid)
+	}
+
+	return id
 }

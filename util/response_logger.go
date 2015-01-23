@@ -32,7 +32,7 @@ func (l *responseLogger) WriteHeader(s int) {
 	l.status = s
 }
 
-func (l *responseLogger) WriteLog() {
+func (l *responseLogger) WriteLog(requestId string) {
 	maskedStatus := strconv.Itoa(l.status/100) + "xx"
-	log.Printf("count#http.status.%s=1 status=%d", maskedStatus, l.status)
+	log.Printf("count#http.status.%s=1 status=%d request_id=%s", maskedStatus, l.status, requestId)
 }
