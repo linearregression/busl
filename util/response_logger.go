@@ -7,7 +7,7 @@ import (
 )
 
 func NewResponseLogger(w http.ResponseWriter) *responseLogger {
-	return &responseLogger{w: w}
+	return &responseLogger{w: w, status: http.StatusOK}
 }
 
 type responseLogger struct {
@@ -21,10 +21,6 @@ func (l *responseLogger) Header() http.Header {
 }
 
 func (l *responseLogger) Write(b []byte) (int, error) {
-	if l.status == 0 {
-		// The status will be StatusOK if WriteHeader has not been called yet
-		l.status = http.StatusOK
-	}
 	size, err := l.w.Write(b)
 	l.size += size
 
@@ -38,5 +34,5 @@ func (l *responseLogger) WriteHeader(s int) {
 
 func (l *responseLogger) WriteLog() {
 	maskedStatus := strconv.Itoa(l.status/100) + "xx"
-	log.Printf("count#http.status.%s=1", maskedStatus)
+	log.Printf("count#http.status.%s=1 status=%d", maskedStatus, l.status)
 }
