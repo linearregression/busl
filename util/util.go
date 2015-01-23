@@ -55,7 +55,7 @@ func CountWithData(metric string, count int64, extraData string, v ...interface{
 	if extraData == "" {
 		log.Printf("count#%s=%d", metric, count)
 	} else {
-		log.Printf("count#%s=%d %s", metric, count, fmt.Sprintf(extraData, v))
+		log.Printf("count#%s=%d %s", metric, count, fmt.Sprintf(extraData, v...))
 	}
 }
 
