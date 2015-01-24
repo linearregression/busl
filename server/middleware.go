@@ -6,9 +6,9 @@ import (
 	"github.com/heroku/busl/util"
 )
 
-func enforceHTTPS(ƒ http.HandlerFunc) http.HandlerFunc {
+func enforceHTTPS(fn http.HandlerFunc) http.HandlerFunc {
 	if !*util.EnforceHTTPS {
-		return ƒ
+		return fn
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +21,14 @@ func enforceHTTPS(ƒ http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		ƒ(w, r)
+		fn(w, r)
+	}
+}
+
+func logRequest(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger := util.NewResponseLogger(w)
+		fn(logger, r)
+		logger.WriteLog()
 	}
 }

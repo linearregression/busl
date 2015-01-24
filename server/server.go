@@ -180,7 +180,7 @@ func Start(port string, shutdown <-chan struct{}) {
 	p.PostFunc("/streams/:uuid", addDefaultHeaders(pub))
 	p.GetFunc("/streams/:uuid", addDefaultHeaders(sub))
 
-	http.HandleFunc("/", enforceHTTPS(p.ServeHTTP))
+	http.Handle("/", logRequest(enforceHTTPS(p.ServeHTTP)))
 
 	go listenForShutdown(shutdown)
 
