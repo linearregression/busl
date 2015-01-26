@@ -172,7 +172,7 @@ func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func Start(port string, shutdown <-chan struct{}) {
+func app() http.Handler {
 	p := pat.New()
 
 	p.GetFunc("/health", addDefaultHeaders(health))
@@ -180,8 +180,10 @@ func Start(port string, shutdown <-chan struct{}) {
 	p.PostFunc("/streams/:uuid", addDefaultHeaders(pub))
 	p.GetFunc("/streams/:uuid", addDefaultHeaders(sub))
 
-	http.Handle("/", logRequest(enforceHTTPS(p.ServeHTTP)))
-
+	return logRequest(enforceHTTPS(p.ServeHTTP))
+}
+func Start(port string, shutdown <-chan struct{}) {
+	http.Handle("/", app())
 	go listenForShutdown(shutdown)
 
 	if err := gracefulServer.ListenAndServe(":"+port, nil); err != nil {
