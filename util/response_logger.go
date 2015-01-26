@@ -32,6 +32,14 @@ func (l *responseLogger) WriteHeader(s int) {
 	l.status = s
 }
 
+func (l *responseLogger) CloseNotify() <-chan bool {
+	return l.w.(http.CloseNotifier).CloseNotify()
+}
+
+func (l *responseLogger) Flush() {
+	l.w.(http.Flusher).Flush()
+}
+
 func (l *responseLogger) WriteLog() {
 	maskedStatus := strconv.Itoa(l.status/100) + "xx"
 	log.Printf("count#http.status.%s=1 status=%d", maskedStatus, l.status)
