@@ -165,6 +165,45 @@ func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
 	c.Assert(subResponse.Body.Bytes(), DeepEquals, expected)
 }
 
+func (s *HttpServerSuite) TestSubWaitingPub(c *C) {
+	contentType := "application/x-www-form-urlencoded"
+
+	// Start the server in a randomly assigned port
+	server := httptest.NewServer(app())
+	defer server.Close()
+
+	// uuid = curl -XPOST <url>/streams
+	resp, err := http.Post(server.URL+"/streams", contentType, nil)
+	defer resp.Body.Close()
+	c.Assert(err, Equals, nil)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	c.Assert(err, Equals, nil)
+
+	// uuid extracted
+	uuid := string(body)
+	c.Assert(len(uuid), Equals, 32)
+
+	// curl <url>/streams/<uuid>
+	// -- waiting for publish to arrive
+	resp, err = http.Get(server.URL + "/streams/" + uuid)
+	defer resp.Body.Close()
+	c.Assert(err, Equals, nil)
+
+	transport := &http.Transport{}
+	client := &http.Client{Transport: transport}
+
+	// curl -XPOST -H "Transfer-Encoding: chunked" -d "hello" <url>/streams/<uuid>
+	req := newRequestFromReader("POST", server.URL+"/streams/"+uuid, strings.NewReader("Hello"))
+	r, err := client.Do(req)
+	defer r.Body.Close()
+	c.Assert(err, Equals, nil)
+
+	// -- output grabbed from the earlier waiting subscribe.
+	body, _ = ioutil.ReadAll(resp.Body)
+	c.Assert(string(body), Equals, "Hello")
+}
+
 type CloseNotifierRecorder struct {
 	*httptest.ResponseRecorder
 	closed chan bool
