@@ -8,6 +8,7 @@ import (
 	. "gopkg.in/check.v1"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -165,6 +166,50 @@ func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
 	c.Assert(subResponse.Body.Bytes(), DeepEquals, expected)
 }
 
+func (s *HttpServerSuite) TestSubWaitingPub(c *C) {
+	contentType := "application/x-www-form-urlencoded"
+
+	// Start the server in a randomly assigned port
+	ln, err := start(":0")
+	c.Assert(err, Equals, nil)
+	defer ln.Close()
+
+	// Capture the URL together with the port
+	port := ln.Addr().(*net.TCPAddr).Port
+	url := fmt.Sprintf("http://0.0.0.0:%d", port)
+
+	// uuid = curl -XPOST <url>/streams
+	resp, err := http.Post(url+"/streams", contentType, nil)
+	defer resp.Body.Close()
+	c.Assert(err, Equals, nil)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	c.Assert(err, Equals, nil)
+
+	// uuid extracted
+	uuid := string(body)
+	c.Assert(len(uuid), Equals, 32)
+
+	// curl <url>/streams/<uuid>
+	// -- waiting for publish to arrive
+	resp, err = http.Get(url + "/streams/" + uuid)
+	defer resp.Body.Close()
+	c.Assert(err, Equals, nil)
+
+	transport := &http.Transport{}
+	client := &http.Client{Transport: transport}
+
+	// curl -XPOST -H "Transfer-Encoding: chunked" -d "hello" <url>/streams/<uuid>
+	req := newRequestFromReader("POST", url+"/streams/"+uuid, strings.NewReader("Hello"))
+	r, err := client.Do(req)
+	defer r.Body.Close()
+	c.Assert(err, Equals, nil)
+
+	// -- output grabbed from the earlier waiting subscribe.
+	body, _ = ioutil.ReadAll(resp.Body)
+	c.Assert(string(body), Equals, "Hello")
+}
+
 type CloseNotifierRecorder struct {
 	*httptest.ResponseRecorder
 	closed chan bool
@@ -176,4 +221,16 @@ func (cnr CloseNotifierRecorder) close() {
 
 func (cnr CloseNotifierRecorder) CloseNotify() <-chan bool {
 	return cnr.closed
+}
+
+func start(addr string) (net.Listener, error) {
+	http.Handle("/", app())
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+
+	go http.Serve(listener, nil)
+
+	return listener, nil
 }
