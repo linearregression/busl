@@ -183,6 +183,7 @@ func app() http.Handler {
 	return logRequest(enforceHTTPS(p.ServeHTTP))
 }
 func Start(port string, shutdown <-chan struct{}) {
+	log.Printf("http.start.port=%s\n", port)
 	http.Handle("/", app())
 	go listenForShutdown(shutdown)
 
