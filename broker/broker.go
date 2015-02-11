@@ -5,7 +5,7 @@ import (
 )
 
 type Broker interface {
-	Publish(msg []byte)
+	Write(msg []byte) (int, error)
 	Subscribe() (chan []byte, error)
 	Unsubscribe(ch chan []byte)
 }

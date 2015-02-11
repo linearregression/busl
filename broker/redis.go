@@ -188,10 +188,6 @@ func (b *RedisBroker) UnsubscribeAll() {
 	conn.Do("SETEX", b.channel.doneId(), redisChannelExpire, []byte{1})
 }
 
-func (b *RedisBroker) Publish(msg []byte) {
-	b.publishOn(msg)
-}
-
 func (b *RedisBroker) Write(msg []byte) (n int, err error) {
 	err = b.publishOn(msg)
 
