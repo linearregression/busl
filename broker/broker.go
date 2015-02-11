@@ -1,11 +1,13 @@
 package broker
 
 import (
+	"io"
+
 	"github.com/heroku/busl/util"
 )
 
 type Broker interface {
-	Write(msg []byte) (int, error)
+	io.Writer
 	Subscribe() (chan []byte, error)
 	Unsubscribe(ch chan []byte)
 }
