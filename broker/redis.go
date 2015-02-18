@@ -158,11 +158,13 @@ func (b *RedisBroker) redisSubscribe(ch chan []byte, offset int64) {
 			}
 		case redis.Subscription:
 			if msg.Kind == "punsubscribe" || msg.Kind == "unsubscribe" {
-				subscSlice, _ := b.getRange(offset, []byte("-1"))
-				ch <- subscSlice
+				if _, ok := b.subscribers[ch]; ok {
+					subscSlice, _ := b.getRange(offset, []byte("-1"))
+					ch <- subscSlice
+					b.Unsubscribe(ch)
+				}
 
 				util.Count("RedisBroker.redisSubscribe.Channel.unsubscribe")
-				b.Unsubscribe(ch)
 				return
 			}
 		case error:
