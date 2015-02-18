@@ -98,3 +98,25 @@ func (s *BrokerSuite) TestRedisSubscribeWithOffset(c *C) {
 	defer broker.Unsubscribe(ch)
 	c.Assert(string(<-ch), Equals, "sl")
 }
+
+func (s *BrokerSuite) TestRedisSubscribeConcurrent(c *C) {
+	redisBroker := NewRedisBroker(s.uuid)
+
+	pub := make(chan bool)
+	done := make(chan bool)
+
+	go func() {
+		pub <- true
+		redisBroker.Write([]byte("busl"))
+		redisBroker.UnsubscribeAll()
+	}()
+
+	go func() {
+		<-pub
+		ch, _ := s.broker.Subscribe(0)
+		defer s.broker.Unsubscribe(ch)
+		c.Assert(string(<-ch), Equals, "busl")
+		done <- true
+	}()
+	<-done
+}
