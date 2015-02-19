@@ -68,6 +68,11 @@ func pub(w http.ResponseWriter, r *http.Request) {
 
 	_, err := io.Copy(msgBroker, bodyBuffer)
 
+	if err == io.ErrUnexpectedEOF {
+		util.CountWithData("server.pub.read.eoferror", 1, "msg=\"%v\"", err.Error())
+		return
+	}
+
 	if err != nil {
 		log.Printf("%#v", err)
 		http.Error(w, "Unhandled error, please try again.", http.StatusInternalServerError)
