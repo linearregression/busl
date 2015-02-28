@@ -60,8 +60,8 @@ func (s *HttpServerSuite) TestPub(c *C) {
 
 	pub(response, request)
 
-	c.Assert(response.Code, Equals, http.StatusOK)
-	c.Assert(response.Body.String(), IsEmptyString)
+	c.Assert(response.Code, Equals, http.StatusNotFound)
+	c.Assert(response.Body.String(), Equals, broker.ErrNotRegistered.Error()+"\n")
 }
 
 func (s *HttpServerSuite) TestPubWithoutTransferEncoding(c *C) {
@@ -79,7 +79,7 @@ func (s *HttpServerSuite) TestSub(c *C) {
 	streamId, _ := NewUUID()
 	registrar := broker.NewRedisRegistrar()
 	registrar.Register(streamId)
-	publisher := broker.NewRedisBroker(streamId)
+	writer, _ := broker.NewWriter(streamId)
 
 	request := newRequest("GET", sf("/streams/%s", streamId), "")
 	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
@@ -88,8 +88,8 @@ func (s *HttpServerSuite) TestSub(c *C) {
 		sub(response, request)
 	})
 
-	publisher.Write([]byte("busl1"))
-	publisher.UnsubscribeAll()
+	writer.Write([]byte("busl1"))
+	writer.Close()
 	<-waiter
 
 	c.Assert(response.Code, Equals, http.StatusOK)
@@ -166,14 +166,12 @@ func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
 }
 
 func (s *HttpServerSuite) TestSubWaitingPub(c *C) {
-	contentType := "application/x-www-form-urlencoded"
-
 	// Start the server in a randomly assigned port
 	server := httptest.NewServer(app())
 	defer server.Close()
 
 	// uuid = curl -XPOST <url>/streams
-	resp, err := http.Post(server.URL+"/streams", contentType, nil)
+	resp, err := http.Post(server.URL+"/streams", "", nil)
 	defer resp.Body.Close()
 	c.Assert(err, Equals, nil)
 
@@ -184,11 +182,20 @@ func (s *HttpServerSuite) TestSubWaitingPub(c *C) {
 	uuid := string(body)
 	c.Assert(len(uuid), Equals, 32)
 
-	// curl <url>/streams/<uuid>
-	// -- waiting for publish to arrive
-	resp, err = http.Get(server.URL + "/streams/" + uuid)
-	defer resp.Body.Close()
-	c.Assert(err, Equals, nil)
+	done := make(chan bool)
+
+	go func() {
+		// curl <url>/streams/<uuid>
+		// -- waiting for publish to arrive
+		resp, err = http.Get(server.URL + "/streams/" + uuid)
+		defer resp.Body.Close()
+		c.Assert(err, IsNil)
+
+		body, _ = ioutil.ReadAll(resp.Body)
+		c.Assert(string(body), Equals, "Hello")
+
+		done <- true
+	}()
 
 	transport := &http.Transport{}
 	client := &http.Client{Transport: transport}
@@ -196,12 +203,10 @@ func (s *HttpServerSuite) TestSubWaitingPub(c *C) {
 	// curl -XPOST -H "Transfer-Encoding: chunked" -d "hello" <url>/streams/<uuid>
 	req := newRequestFromReader("POST", server.URL+"/streams/"+uuid, strings.NewReader("Hello"))
 	r, err := client.Do(req)
-	defer r.Body.Close()
-	c.Assert(err, Equals, nil)
+	r.Body.Close()
+	c.Assert(err, IsNil)
 
-	// -- output grabbed from the earlier waiting subscribe.
-	body, _ = ioutil.ReadAll(resp.Body)
-	c.Assert(string(body), Equals, "Hello")
+	<-done
 }
 
 type CloseNotifierRecorder struct {

@@ -6,14 +6,11 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/braintree/manners"
 	"github.com/cyberdelia/pat"
 	"github.com/heroku/busl/assets"
 	"github.com/heroku/busl/broker"
-	"github.com/heroku/busl/sse"
 	"github.com/heroku/busl/util"
 	"github.com/heroku/rollbar"
 )
@@ -44,7 +41,6 @@ func mkstream(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	util.Count("mkstream.create.success")
-
 	io.WriteString(w, string(uuid))
 }
 
@@ -60,13 +56,17 @@ func pub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msgBroker := broker.NewRedisBroker(uuid)
-	defer msgBroker.UnsubscribeAll()
+	writer, err := broker.NewWriter(uuid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	defer writer.Close()
 
-	bodyBuffer := bufio.NewReader(r.Body)
+	body := bufio.NewReader(r.Body)
 	defer r.Body.Close()
 
-	_, err := io.Copy(msgBroker, bodyBuffer)
+	_, err = io.Copy(writer, body)
 
 	if err == io.ErrUnexpectedEOF {
 		util.CountWithData("server.pub.read.eoferror", 1, "msg=\"%v\"", err.Error())
@@ -82,7 +82,6 @@ func pub(w http.ResponseWriter, r *http.Request) {
 
 func sub(w http.ResponseWriter, r *http.Request) {
 	f, ok := w.(http.Flusher)
-	closeNotifier := w.(http.CloseNotifier).CloseNotify()
 
 	if !ok {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
@@ -91,15 +90,11 @@ func sub(w http.ResponseWriter, r *http.Request) {
 
 	uuid := util.UUID(r.URL.Query().Get(":uuid"))
 
-	lastEventId := r.Header.Get("last-event-id")
-	offset, err := strconv.Atoi(lastEventId)
-	if err != nil {
-		offset = 0
-	}
+	offset := offset(r)
 
-	msgBroker := broker.NewRedisBroker(uuid)
-	ch, err := msgBroker.Subscribe(int64(offset))
-	defer msgBroker.Unsubscribe(ch)
+	reader, err := broker.NewReader(uuid)
+	reader.Seek(int64(offset), 0)
+	defer reader.Close()
 
 	if err != nil {
 		message := "Channel is not registered."
@@ -112,55 +107,9 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	keepalive := util.GetNullByte()
-	if r.Header.Get("Accept") == "text/event-stream" {
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-
-		out := make(chan []byte, len(ch))
-		go sse.Transform(offset, ch, out)
-		ch = out
-		keepalive = []byte(":keepalive\n")
-	}
-
-	timer := time.NewTimer(*util.HeartbeatDuration)
-	defer timer.Stop()
-
-	for {
-		select {
-		case msg, msgOk := <-ch:
-			if msgOk {
-				timer.Reset(*util.HeartbeatDuration)
-				w.Write(msg)
-				f.Flush()
-				continue
-			} else {
-				timer.Stop()
-				return
-			}
-		case t, tOk := <-timer.C:
-			if tOk {
-				util.Count("server.sub.keepAlive")
-				w.Write(keepalive)
-				f.Flush()
-				timer.Reset(*util.HeartbeatDuration)
-				continue
-			} else {
-				util.CountWithData("server.sub.keepAlive.failed", 1, "timer=%v timerChannel=%v", timer, t)
-				timer.Stop()
-				w.Write([]byte("Unable to keep connection alive."))
-				f.Flush()
-				return
-			}
-		case cn, cnOk := <-closeNotifier:
-			if cn && cnOk {
-				util.Count("server.sub.clientClosed")
-				timer.Stop()
-				return
-			}
-		}
-	}
-
+	closeNotifier := w.(http.CloseNotifier).CloseNotify()
+	kaReader := NewKeepAliveReader(reader, util.GetNullByte(), *util.HeartbeatDuration, closeNotifier)
+	io.Copy(NewWriteFlusher(w), kaReader)
 	f.Flush()
 }
 
