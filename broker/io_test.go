@@ -3,6 +3,7 @@ package broker
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 
 	"github.com/heroku/busl/util"
@@ -20,7 +21,7 @@ func ExamplePubSub() {
 	uuid := setup()
 
 	r, _ := NewReader(uuid)
-	defer r.Close()
+	defer r.(io.Closer).Close()
 
 	pub := make(chan bool)
 	done := make(chan bool)
@@ -56,7 +57,7 @@ func ExampleFullReplay() {
 	w.Write([]byte(" world"))
 
 	r, _ := NewReader(uuid)
-	defer r.Close()
+	defer r.(io.Closer).Close()
 
 	buf := make([]byte, 16)
 	io.ReadAtLeast(r, buf, 16)
@@ -65,6 +66,46 @@ func ExampleFullReplay() {
 
 	//Output:
 	// busl hello world
+}
+
+func ExampleSeekCorrect() {
+	uuid := setup()
+
+	w, _ := NewWriter(uuid)
+	w.Write([]byte("busl"))
+	w.Write([]byte(" hello"))
+	w.Write([]byte(" world"))
+	w.Close()
+
+	r, _ := NewReader(uuid)
+	r.Seek(10, 0)
+	defer r.(io.Closer).Close()
+
+	buf, _ := ioutil.ReadAll(r)
+	fmt.Printf("%s", buf)
+
+	//Output:
+	// world
+}
+
+func ExampleSeekBeyond() {
+	uuid := setup()
+
+	w, _ := NewWriter(uuid)
+	w.Write([]byte("busl"))
+	w.Write([]byte(" hello"))
+	w.Write([]byte(" world"))
+	w.Close()
+
+	r, _ := NewReader(uuid)
+	r.Seek(16, 0)
+	defer r.(io.Closer).Close()
+
+	buf, _ := ioutil.ReadAll(r)
+	fmt.Printf("%s", buf)
+
+	//Output:
+	//
 }
 
 func ExampleHalfReplayHalfSubscribed() {
