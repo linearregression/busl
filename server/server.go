@@ -109,7 +109,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 
 	closeNotifier := w.(http.CloseNotifier).CloseNotify()
 	kaReader := NewKeepAliveReader(reader, util.GetNullByte(), *util.HeartbeatDuration, closeNotifier)
-	io.Copy(NewWriteFlusher(w), kaReader)
+	io.Copy(&writeFlusher{w}, kaReader)
 	f.Flush()
 }
 
