@@ -11,6 +11,7 @@ import (
 	"github.com/cyberdelia/pat"
 	"github.com/heroku/busl/assets"
 	"github.com/heroku/busl/broker"
+	"github.com/heroku/busl/sse"
 	"github.com/heroku/busl/util"
 	"github.com/heroku/rollbar"
 )
@@ -94,7 +95,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 
 	rd, err := broker.NewReader(uuid)
 	rd.Seek(int64(offset), 0)
-	defer rd.Close()
+	defer rd.(io.ReadCloser).Close()
 
 	if err != nil {
 		message := "Channel is not registered."
@@ -107,8 +108,23 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// For default requests, we use a null byte for sending
+	// the keepalive ack.
+	ack := util.GetNullByte()
+
+	if r.Header.Get("Accept") == "text/event-stream" {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+
+		rd = sse.NewEncoder(rd)
+		rd.Seek(int64(offset), 0)
+
+		// For SSE, we change the ack to a :keepalive
+		ack = []byte(":keepalive\n")
+	}
+
 	done := w.(http.CloseNotifier).CloseNotify()
-	reader := NewKeepAliveReader(rd, util.GetNullByte(), *util.HeartbeatDuration, done)
+	reader := NewKeepAliveReader(rd, ack, *util.HeartbeatDuration, done)
 	io.Copy(&writeFlusher{w}, reader)
 }
 

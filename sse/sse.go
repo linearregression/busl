@@ -17,7 +17,7 @@ type encoder struct {
 	offset   int64         // offset for Seek purposes
 }
 
-func NewEncoder(r io.Reader) *encoder {
+func NewEncoder(r io.Reader) io.ReadSeeker {
 	return &encoder{r, bufio.NewReader(r), 0}
 }
 
