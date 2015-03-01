@@ -54,6 +54,16 @@ func (s *HttpServerSuite) TestMkstream(c *C) {
 	c.Assert(response.Body.String(), HasLen, 32)
 }
 
+func (s *HttpServerSuite) Test410(c *C) {
+	request := newRequest("GET", "/streams/1234", "")
+	response := httptest.NewRecorder()
+
+	sub(response, request)
+
+	c.Assert(response.Code, Equals, http.StatusGone)
+	c.Assert(response.Body.String(), Equals, broker.ErrNotRegistered.Error()+"\n")
+}
+
 func (s *HttpServerSuite) TestPub(c *C) {
 	request := newRequest("POST", "/streams/1234", "")
 	response := httptest.NewRecorder()
