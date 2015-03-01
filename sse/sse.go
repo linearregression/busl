@@ -1,50 +1,49 @@
 package sse
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 )
 
 const (
-	id   = "id: %d\n"
-	data = "data: %s\n"
+	template = "id: %d\ndata: %s\n\n"
 )
 
-var (
-	newline = []byte{'\n'}
-)
-
-// Usage:
-//
-//     in := make(chan []byte, 10)
-//     out := make(chan []byte, 10)
-//     go sse.Transform(in, out)
-//
-//     in <- "hello"
-//     <-out // id: 5\ndata: hello\n\n
-//
-func Transform(offset int, in, out chan []byte) {
-	for {
-		msg, msgOk := <-in
-
-		if msgOk {
-			out <- format(offset, msg)
-			offset += len(msg)
-		} else {
-			close(out)
-			return
-		}
-	}
+type encoder struct {
+	reader   io.Reader     // stores the original reader
+	buffered *bufio.Reader // bufio wrapper for original reader
+	offset   int64         // offset for Seek purposes
 }
 
-func format(pos int, msg []byte) []byte {
-	buf := bytes.NewBufferString(fmt.Sprintf(id, pos+len(msg)))
+func NewEncoder(r io.Reader) *encoder {
+	return &encoder{r, bufio.NewReader(r), 0}
+}
 
-	for _, line := range bytes.Split(msg, newline) {
-		buf.WriteString(fmt.Sprintf(data, line))
+func (r *encoder) Seek(offset int64, whence int) (n int64, err error) {
+	r.offset, err = r.reader.(io.ReadSeeker).Seek(offset, whence)
+	return r.offset, err
+}
+
+// FIXME: this version is simplified and assumes
+// that len(p) is always greater than the potential
+// length of data to be read.
+func (r *encoder) Read(p []byte) (n int, err error) {
+	data, err := r.buffered.ReadBytes('\n')
+
+	if n = len(data); n > 0 {
+		data = format(r.offset, data)
+		r.offset += int64(n)
+		n = copy(p, data)
 	}
 
-	buf.Write(newline)
+	return n, err
+}
 
-	return buf.Bytes()
+func format(pos int64, msg []byte) []byte {
+	id := pos + int64(len(msg))
+	msg = bytes.Trim(msg, "\n")
+
+	return []byte(fmt.Sprintf(template, id, msg))
 }
