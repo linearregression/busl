@@ -3,6 +3,7 @@ package broker
 import (
 	"io"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	u "github.com/heroku/busl/util"
@@ -20,7 +21,7 @@ type BrokerSuite struct {
 	registrar Registrar
 	uuid      u.UUID
 	writer    *writer
-	reader    *reader
+	reader    io.ReadSeeker
 }
 
 var _ = Suite(&RegistrarSuite{})
@@ -100,8 +101,20 @@ func (s *BrokerSuite) TestRedisSubscribeWithOffset(c *C) {
 	s.writer.Close()
 
 	s.reader.Seek(2, 0)
-	defer s.reader.Close()
+	defer s.reader.(io.Closer).Close()
 	c.Assert(readstring(s.reader), Equals, "sl")
+}
+
+func (s *BrokerSuite) TestRedisSubscribeOffsetLimits(c *C) {
+	s.writer.Write([]byte("busl"))
+	s.writer.Close()
+
+	s.reader.Seek(4, 0)
+	defer s.reader.(io.Closer).Close()
+	c.Assert(readstring(s.reader), Equals, "")
+
+	s.reader.Seek(5, 0)
+	io.Copy(os.Stdout, s.reader)
 }
 
 func (s *BrokerSuite) TestRedisSubscribeConcurrent(c *C) {
@@ -121,4 +134,16 @@ func (s *BrokerSuite) TestRedisSubscribeConcurrent(c *C) {
 	}()
 
 	<-done
+}
+
+func (s *BrokerSuite) TestRedisReadFromClosed(c *C) {
+	p := make([]byte, 10)
+
+	// this read sets replayed = true
+	s.reader.Read(p)
+	s.writer.Close()
+
+	// this read should short circuit with EOF
+	_, err := s.reader.Read(p)
+	c.Assert(err, Equals, io.EOF)
 }
