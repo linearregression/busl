@@ -46,9 +46,10 @@ type reader struct {
 	psc      redis.PubSubConn
 	offset   int64
 	replayed bool
+	closed   bool
 }
 
-func NewReader(uuid util.UUID) (*reader, error) {
+func NewReader(uuid util.UUID) (io.ReadSeeker, error) {
 	if !NewRedisRegistrar().IsRegistered(uuid) {
 		return nil, ErrNotRegistered
 	}
@@ -57,7 +58,12 @@ func NewReader(uuid util.UUID) (*reader, error) {
 	channel := channel(uuid)
 	psc.PSubscribe(channel.wildcardId())
 
-	return &reader{redisPool.Get(), channel, psc, 0, false}, nil
+	rd := &reader{
+		conn:    redisPool.Get(),
+		channel: channel,
+		psc:     psc}
+
+	return rd, nil
 }
 
 // TODO: decide what to do based on whence; whether we should
@@ -69,7 +75,11 @@ func (r *reader) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (r *reader) Read(p []byte) (n int, err error) {
-	if n, err := r.replay(p); n > 0 {
+	if r.closed { // Don't read from a closed redigo connection
+		return 0, io.EOF
+	}
+
+	if n, err := r.replay(p); n > 0 || err != nil {
 		return n, err
 	}
 
@@ -146,6 +156,7 @@ func (r *reader) fetch() ([]byte, error) {
 }
 
 func (r *reader) Close() error {
+	r.closed = true
 	r.psc.Unsubscribe()
 	r.psc.Close()
 	return r.conn.Close()
