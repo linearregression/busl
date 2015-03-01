@@ -92,9 +92,9 @@ func sub(w http.ResponseWriter, r *http.Request) {
 
 	offset := offset(r)
 
-	reader, err := broker.NewReader(uuid)
-	reader.Seek(int64(offset), 0)
-	defer reader.Close()
+	rd, err := broker.NewReader(uuid)
+	rd.Seek(int64(offset), 0)
+	defer rd.Close()
 
 	if err != nil {
 		message := "Channel is not registered."
@@ -108,9 +108,8 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	done := w.(http.CloseNotifier).CloseNotify()
-	kaReader := NewKeepAliveReader(reader, util.GetNullByte(), *util.HeartbeatDuration, done)
-	io.Copy(&writeFlusher{w}, kaReader)
-	f.Flush()
+	reader := NewKeepAliveReader(rd, util.GetNullByte(), *util.HeartbeatDuration, done)
+	io.Copy(&writeFlusher{w}, reader)
 }
 
 func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
