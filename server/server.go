@@ -91,11 +91,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 
 	uuid := util.UUID(r.URL.Query().Get(":uuid"))
 
-	offset := offset(r)
-
 	rd, err := broker.NewReader(uuid)
-	rd.Seek(int64(offset), 0)
-	defer rd.(io.ReadCloser).Close()
 
 	if err != nil {
 		message := "Channel is not registered."
@@ -107,6 +103,12 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		f.Flush()
 		return
 	}
+
+	defer rd.(io.ReadCloser).Close()
+
+	// Get the offset from Last-Event-ID: or Range:
+	offset := offset(r)
+	rd.Seek(int64(offset), 0)
 
 	// For default requests, we use a null byte for sending
 	// the keepalive ack.
