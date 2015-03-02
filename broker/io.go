@@ -186,3 +186,17 @@ func (r *reader) Close() error {
 
 	return r.conn.Close()
 }
+
+func ReaderDone(rd io.Reader) bool {
+	r, ok := rd.(*reader)
+	if !ok {
+		return false
+	}
+
+	if r.closed {
+		return true
+	}
+
+	done, _ := redis.Bool(r.conn.Do("EXISTS", r.channel.doneId()))
+	return done
+}

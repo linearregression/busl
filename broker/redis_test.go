@@ -4,6 +4,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	u "github.com/heroku/busl/util"
@@ -146,4 +147,15 @@ func (s *BrokerSuite) TestRedisReadFromClosed(c *C) {
 	// this read should short circuit with EOF
 	_, err := s.reader.Read(p)
 	c.Assert(err, Equals, io.EOF)
+
+	// We'll get true here because r.closed is already set
+	c.Assert(ReaderDone(s.reader), Equals, true)
+
+	// We should still get true here because doneId is set
+	r, _ := NewReader(s.uuid)
+	c.Assert(ReaderDone(r), Equals, true)
+
+	// Reader done on a regular io.Reader should return false
+	// and not panic
+	c.Assert(ReaderDone(strings.NewReader("hello")), Equals, false)
 }
