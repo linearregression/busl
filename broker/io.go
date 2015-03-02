@@ -13,7 +13,7 @@ type writer struct {
 	channel channel
 }
 
-func NewWriter(uuid util.UUID) (*writer, error) {
+func NewWriter(uuid util.UUID) (io.WriteCloser, error) {
 	if !NewRedisRegistrar().IsRegistered(uuid) {
 		return nil, ErrNotRegistered
 	}

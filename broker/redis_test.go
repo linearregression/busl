@@ -20,7 +20,7 @@ type RegistrarSuite struct {
 type BrokerSuite struct {
 	registrar Registrar
 	uuid      u.UUID
-	writer    *writer
+	writer    io.WriteCloser
 	reader    io.ReadSeeker
 }
 
