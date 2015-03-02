@@ -61,7 +61,7 @@ func (s *HttpServerSuite) Test410(c *C) {
 	sub(response, request)
 
 	c.Assert(response.Code, Equals, http.StatusGone)
-	c.Assert(response.Body.String(), Equals, broker.ErrNotRegistered.Error()+"\n")
+	c.Assert(response.Body.String(), Equals, "Channel is not registered.\n")
 }
 
 func (s *HttpServerSuite) TestPub(c *C) {
@@ -71,7 +71,7 @@ func (s *HttpServerSuite) TestPub(c *C) {
 	pub(response, request)
 
 	c.Assert(response.Code, Equals, http.StatusNotFound)
-	c.Assert(response.Body.String(), Equals, broker.ErrNotRegistered.Error()+"\n")
+	c.Assert(response.Body.String(), Equals, "Channel is not registered.\n")
 }
 
 func (s *HttpServerSuite) TestPubWithoutTransferEncoding(c *C) {

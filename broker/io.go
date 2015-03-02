@@ -14,9 +14,11 @@ type writer struct {
 	channel channel
 }
 
+var errNotRegistered = errors.New("Channel is not registered.")
+
 func NewWriter(uuid util.UUID) (io.WriteCloser, error) {
 	if !NewRedisRegistrar().IsRegistered(uuid) {
-		return nil, ErrNotRegistered
+		return nil, errNotRegistered
 	}
 
 	conn := redisPool.Get()
@@ -54,7 +56,7 @@ type reader struct {
 
 func NewReader(uuid util.UUID) (io.ReadCloser, error) {
 	if !NewRedisRegistrar().IsRegistered(uuid) {
-		return nil, ErrNotRegistered
+		return nil, errNotRegistered
 	}
 
 	psc := redis.PubSubConn{redisPool.Get()}

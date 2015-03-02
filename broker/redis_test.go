@@ -46,10 +46,10 @@ func (s *RegistrarSuite) TestUnregisteredIsNotRegistered(c *C) {
 
 func (s *RegistrarSuite) TestUnregisteredErrNotRegistered(c *C) {
 	_, err := NewReader(s.uuid)
-	c.Assert(err, Equals, ErrNotRegistered)
+	c.Assert(err, Equals, errNotRegistered)
 
 	_, err = NewWriter(s.uuid)
-	c.Assert(err, Equals, ErrNotRegistered)
+	c.Assert(err, Equals, errNotRegistered)
 }
 
 func (s *RegistrarSuite) TestRegisteredNoError(c *C) {

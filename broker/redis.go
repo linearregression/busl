@@ -1,7 +1,6 @@
 package broker
 
 import (
-	"errors"
 	"flag"
 	"log"
 	"net/url"
@@ -13,7 +12,6 @@ import (
 )
 
 var (
-	ErrNotRegistered   = errors.New("Channel is not registered.")
 	redisUrl           = flag.String("redisUrl", os.Getenv("REDIS_URL"), "URL of the redis server")
 	redisServer        *url.URL
 	redisPool          *redis.Pool
