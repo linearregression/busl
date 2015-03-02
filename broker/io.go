@@ -2,6 +2,7 @@ package broker
 
 import (
 	"io"
+	"sync"
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/heroku/busl/util"
@@ -47,6 +48,7 @@ type reader struct {
 	offset   int64
 	replayed bool
 	closed   bool
+	mutex    *sync.Mutex
 }
 
 func NewReader(uuid util.UUID) (io.ReadSeeker, error) {
@@ -61,7 +63,8 @@ func NewReader(uuid util.UUID) (io.ReadSeeker, error) {
 	rd := &reader{
 		conn:    redisPool.Get(),
 		channel: channel,
-		psc:     psc}
+		psc:     psc,
+		mutex:   &sync.Mutex{}}
 
 	return rd, nil
 }
@@ -156,8 +159,16 @@ func (r *reader) fetch() ([]byte, error) {
 }
 
 func (r *reader) Close() error {
+	if r.closed {
+		return nil
+	}
+
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	r.closed = true
 	r.psc.Unsubscribe()
 	r.psc.Close()
+
 	return r.conn.Close()
 }
