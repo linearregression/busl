@@ -78,7 +78,7 @@ func ExampleSeekCorrect() {
 	w.Close()
 
 	r, _ := NewReader(uuid)
-	r.Seek(10, 0)
+	r.(io.Seeker).Seek(10, 0)
 	defer r.(io.Closer).Close()
 
 	buf, _ := ioutil.ReadAll(r)
@@ -98,8 +98,8 @@ func ExampleSeekBeyond() {
 	w.Close()
 
 	r, _ := NewReader(uuid)
-	r.Seek(16, 0)
-	defer r.(io.Closer).Close()
+	r.(io.Seeker).Seek(16, 0)
+	defer r.Close()
 
 	buf, _ := ioutil.ReadAll(r)
 	fmt.Printf("%s", buf)

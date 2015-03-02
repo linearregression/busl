@@ -36,7 +36,7 @@ func (s *SseSuite) TestNoNewline(c *C) {
 	for _, t := range testdata {
 		r := strings.NewReader(t.input)
 		enc := NewEncoder(r)
-		enc.Seek(t.offset, 0)
+		enc.(io.Seeker).Seek(t.offset, 0)
 		c.Assert(readstring(enc), Equals, t.output)
 	}
 }

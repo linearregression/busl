@@ -51,7 +51,7 @@ type reader struct {
 	mutex    *sync.Mutex
 }
 
-func NewReader(uuid util.UUID) (io.ReadSeeker, error) {
+func NewReader(uuid util.UUID) (io.ReadCloser, error) {
 	if !NewRedisRegistrar().IsRegistered(uuid) {
 		return nil, ErrNotRegistered
 	}

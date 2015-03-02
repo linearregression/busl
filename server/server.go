@@ -104,11 +104,13 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer rd.(io.ReadCloser).Close()
+	defer rd.Close()
 
 	// Get the offset from Last-Event-ID: or Range:
 	offset := offset(r)
-	rd.Seek(int64(offset), 0)
+	if offset > 0 {
+		rd.(io.Seeker).Seek(int64(offset), 0)
+	}
 
 	// For default requests, we use a null byte for sending
 	// the keepalive ack.
@@ -118,8 +120,8 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 
-		rd = sse.NewEncoder(rd)
-		rd.Seek(int64(offset), 0)
+		rd = sse.NewEncoder(rd).(io.ReadCloser)
+		rd.(io.Seeker).Seek(int64(offset), 0)
 
 		// For SSE, we change the ack to a :keepalive
 		ack = []byte(":keepalive\n")

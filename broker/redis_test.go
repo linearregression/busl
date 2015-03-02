@@ -21,7 +21,7 @@ type BrokerSuite struct {
 	registrar Registrar
 	uuid      u.UUID
 	writer    io.WriteCloser
-	reader    io.ReadSeeker
+	reader    io.ReadCloser
 }
 
 var _ = Suite(&RegistrarSuite{})
@@ -100,8 +100,8 @@ func (s *BrokerSuite) TestRedisSubscribeWithOffset(c *C) {
 	s.writer.Write([]byte("busl"))
 	s.writer.Close()
 
-	s.reader.Seek(2, 0)
-	defer s.reader.(io.Closer).Close()
+	s.reader.(io.Seeker).Seek(2, 0)
+	defer s.reader.Close()
 	c.Assert(readstring(s.reader), Equals, "sl")
 }
 
@@ -109,11 +109,11 @@ func (s *BrokerSuite) TestRedisSubscribeOffsetLimits(c *C) {
 	s.writer.Write([]byte("busl"))
 	s.writer.Close()
 
-	s.reader.Seek(4, 0)
-	defer s.reader.(io.Closer).Close()
+	s.reader.(io.Seeker).Seek(4, 0)
+	defer s.reader.Close()
 	c.Assert(readstring(s.reader), Equals, "")
 
-	s.reader.Seek(5, 0)
+	s.reader.(io.Seeker).Seek(5, 0)
 	io.Copy(os.Stdout, s.reader)
 }
 
