@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -117,11 +118,23 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	ack := util.GetNullByte()
 
 	if r.Header.Get("Accept") == "text/event-stream" {
+
+		// As indicated in the w3 spec[1] an SSE stream
+		// that's already done should return a 204
+		// [1]: http://www.w3.org/TR/2012/WD-eventsource-20120426/
+		if broker.ReaderDone(rd) {
+			w.WriteHeader(http.StatusNoContent)
+			f.Flush()
+			return
+		}
+
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 
-		rd = sse.NewEncoder(rd).(io.ReadCloser)
-		rd.(io.Seeker).Seek(int64(offset), 0)
+		encoder := sse.NewEncoder(rd)
+		encoder.(io.Seeker).Seek(int64(offset), 0)
+
+		rd = ioutil.NopCloser(encoder)
 
 		// For SSE, we change the ack to a :keepalive
 		ack = []byte(":keepalive\n")
