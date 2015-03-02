@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"errors"
 	"io"
 	"sync"
 
@@ -69,12 +70,23 @@ func NewReader(uuid util.UUID) (io.ReadCloser, error) {
 	return rd, nil
 }
 
-// TODO: decide what to do based on whence; whether we should
-// return an error if whence != 0, or if we should try and
-// respect the values.
+var errWhence = errors.New("Seek: invalid whence")
+var errOffset = errors.New("Seek: invalid offset")
+
 func (r *reader) Seek(offset int64, whence int) (int64, error) {
-	r.offset = offset
-	return offset, nil
+	switch whence {
+	default:
+		return 0, errWhence
+	case 0:
+		r.offset = offset
+	case 1:
+		r.offset += offset
+	}
+	if offset < 0 {
+		return 0, errOffset
+	}
+
+	return r.offset, nil
 }
 
 func (r *reader) Read(p []byte) (n int, err error) {
