@@ -17,11 +17,12 @@ type table struct {
 var (
 	testdata = []table{
 		{0, "hello", "id: 5\ndata: hello\n\n"},
-		{0, "hello\n", "id: 6\ndata: hello\n\n"},
-		{0, "hello\nworld", "id: 6\ndata: hello\n\nid: 11\ndata: world\n\n"},
-		{0, "hello\nworld\n", "id: 6\ndata: hello\n\nid: 12\ndata: world\n\n"},
-		{1, "hello\nworld\n", "id: 6\ndata: ello\n\nid: 12\ndata: world\n\n"},
-		{6, "hello\nworld\n", "id: 12\ndata: world\n\n"},
+		{0, "hello\n", "id: 6\ndata: hello\ndata: \n\n"},
+		{0, "hello\nworld", "id: 11\ndata: hello\ndata: world\n\n"},
+		{0, "hello\nworld\n", "id: 12\ndata: hello\ndata: world\ndata: \n\n"},
+		{1, "hello\nworld\n", "id: 12\ndata: ello\ndata: world\ndata: \n\n"},
+		{6, "hello\nworld\n", "id: 12\ndata: world\ndata: \n\n"},
+		{11, "hello\nworld\n", "id: 12\ndata: \ndata: \n\n"},
 		{12, "hello\nworld\n", ""},
 	}
 )
