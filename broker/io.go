@@ -10,7 +10,6 @@ import (
 )
 
 type writer struct {
-	conn    redis.Conn
 	channel channel
 }
 
@@ -21,26 +20,31 @@ func NewWriter(uuid util.UUID) (io.WriteCloser, error) {
 		return nil, errNotRegistered
 	}
 
-	conn := redisPool.Get()
-	return &writer{conn, channel(uuid)}, nil
+	return &writer{channel(uuid)}, nil
 }
 
 func (w *writer) Close() error {
-	w.conn.Send("MULTI")
-	w.conn.Send("SETEX", w.channel.doneId(), redisChannelExpire, []byte{1})
-	w.conn.Send("PUBLISH", w.channel.killId(), 1)
-	w.conn.Do("EXEC")
-	return w.conn.Close()
+	conn := redisPool.Get()
+	defer conn.Close()
+
+	conn.Send("MULTI")
+	conn.Send("SETEX", w.channel.doneId(), redisChannelExpire, []byte{1})
+	conn.Send("PUBLISH", w.channel.killId(), 1)
+	_, err := conn.Do("EXEC")
+	return err
 }
 
 func (w *writer) Write(p []byte) (int, error) {
-	w.conn.Send("MULTI")
-	w.conn.Send("APPEND", w.channel.id(), p)
-	w.conn.Send("EXPIRE", w.channel.id(), redisChannelExpire)
-	w.conn.Send("DEL", w.channel.doneId())
-	w.conn.Send("PUBLISH", w.channel.id(), 1)
+	conn := redisPool.Get()
+	defer conn.Close()
 
-	_, err := w.conn.Do("EXEC")
+	conn.Send("MULTI")
+	conn.Send("APPEND", w.channel.id(), p)
+	conn.Send("EXPIRE", w.channel.id(), redisChannelExpire)
+	conn.Send("DEL", w.channel.doneId())
+	conn.Send("PUBLISH", w.channel.id(), 1)
+
+	_, err := conn.Do("EXEC")
 	return len(p), err
 }
 
