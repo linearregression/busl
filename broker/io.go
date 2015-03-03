@@ -49,7 +49,6 @@ func (w *writer) Write(p []byte) (int, error) {
 }
 
 type reader struct {
-	conn     redis.Conn
 	channel  channel
 	psc      redis.PubSubConn
 	offset   int64
@@ -68,7 +67,6 @@ func NewReader(uuid util.UUID) (io.ReadCloser, error) {
 	psc.PSubscribe(channel.wildcardId())
 
 	rd := &reader{
-		conn:    redisPool.Get(),
 		channel: channel,
 		psc:     psc,
 		mutex:   &sync.Mutex{}}
@@ -161,11 +159,14 @@ func (r *reader) read(msg redis.PMessage, p []byte) (n int, err error) {
 }
 
 func (r *reader) fetch() ([]byte, error) {
-	r.conn.Send("MULTI")
-	r.conn.Send("GETRANGE", r.channel.id(), r.offset, -1)
-	r.conn.Send("EXISTS", r.channel.doneId())
+	conn := redisPool.Get()
+	defer conn.Close()
 
-	list, err := redis.Values(r.conn.Do("EXEC"))
+	conn.Send("MULTI")
+	conn.Send("GETRANGE", r.channel.id(), r.offset, -1)
+	conn.Send("EXISTS", r.channel.doneId())
+
+	list, err := redis.Values(conn.Do("EXEC"))
 	data, err := redis.Bytes(list[0], err)
 	done, err := redis.Bool(list[1], err)
 
@@ -186,9 +187,7 @@ func (r *reader) Close() error {
 
 	r.closed = true
 	r.psc.Unsubscribe()
-	r.psc.Close()
-
-	return r.conn.Close()
+	return r.psc.Close()
 }
 
 func ReaderDone(rd io.Reader) bool {
@@ -201,6 +200,9 @@ func ReaderDone(rd io.Reader) bool {
 		return true
 	}
 
-	done, _ := redis.Bool(r.conn.Do("EXISTS", r.channel.doneId()))
+	conn := redisPool.Get()
+	defer conn.Close()
+
+	done, _ := redis.Bool(conn.Do("EXISTS", r.channel.doneId()))
 	return done
 }
