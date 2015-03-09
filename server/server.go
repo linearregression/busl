@@ -142,7 +142,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 
 	done := w.(http.CloseNotifier).CloseNotify()
 	reader := NewKeepAliveReader(rd, ack, *util.HeartbeatDuration, done)
-	io.Copy(&writeFlusher{w}, reader)
+	io.Copy(NewWriteFlusher(w), reader)
 }
 
 func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
