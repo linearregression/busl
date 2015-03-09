@@ -46,11 +46,14 @@ func (s *RegistrarSuite) TestUnregisteredIsNotRegistered(c *C) {
 }
 
 func (s *RegistrarSuite) TestUnregisteredErrNotRegistered(c *C) {
+	// Only complains for a Reader; existing behavior allows
+	// publishers to create a channel on the fly.
 	_, err := NewReader(s.uuid)
 	c.Assert(err, Equals, errNotRegistered)
 
+	// Writers can choose any ID it wants without consequence.
 	_, err = NewWriter(s.uuid)
-	c.Assert(err, Equals, errNotRegistered)
+	c.Assert(err, IsNil)
 }
 
 func (s *RegistrarSuite) TestRegisteredNoError(c *C) {

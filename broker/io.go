@@ -16,10 +16,6 @@ type writer struct {
 var errNotRegistered = errors.New("Channel is not registered.")
 
 func NewWriter(uuid util.UUID) (io.WriteCloser, error) {
-	if !NewRedisRegistrar().IsRegistered(uuid) {
-		return nil, errNotRegistered
-	}
-
 	return &writer{channel(uuid)}, nil
 }
 
