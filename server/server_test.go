@@ -55,8 +55,8 @@ func (s *HttpServerSuite) TestMkstream(c *C) {
 }
 
 func (s *HttpServerSuite) Test410(c *C) {
-	request := newRequest("GET", "/streams/1234", "")
-	response := httptest.NewRecorder()
+	request := newRequest("GET", "/streams/_1234", "")
+	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
 	sub(response, request)
 
@@ -70,8 +70,7 @@ func (s *HttpServerSuite) TestPub(c *C) {
 
 	pub(response, request)
 
-	c.Assert(response.Code, Equals, http.StatusNotFound)
-	c.Assert(response.Body.String(), Equals, "Channel is not registered.\n")
+	c.Assert(response.Code, Equals, http.StatusOK)
 }
 
 func (s *HttpServerSuite) TestPubWithoutTransferEncoding(c *C) {

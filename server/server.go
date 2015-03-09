@@ -60,7 +60,7 @@ func pub(w http.ResponseWriter, r *http.Request) {
 
 	writer, err := broker.NewWriter(uuid)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer writer.Close()
