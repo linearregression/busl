@@ -12,6 +12,10 @@ type writeFlusher struct {
 	w io.Writer
 }
 
+func NewWriteFlusher(w io.Writer) io.Writer {
+	return &writeFlusher{w}
+}
+
 func (wf *writeFlusher) Write(p []byte) (int, error) {
 	n, err := wf.w.Write(p)
 	wf.w.(http.Flusher).Flush()
