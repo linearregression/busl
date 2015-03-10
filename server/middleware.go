@@ -29,9 +29,9 @@ func enforceHTTPS(fn http.HandlerFunc) http.HandlerFunc {
 
 func logRequest(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger := util.NewResponseLogger(w)
+		logger := util.NewResponseLogger(w, requestId(r))
 		fn(logger, r)
-		logger.WriteLog(requestId(r))
+		logger.WriteLog()
 	}
 }
 
