@@ -161,8 +161,8 @@ func app() http.Handler {
 	p := pat.New()
 
 	p.GetFunc("/health", addDefaultHeaders(health))
-	p.PostFunc("/streams", addDefaultHeaders(mkstream))
-	p.PostFunc("/streams/:uuid", addDefaultHeaders(pub))
+	p.PostFunc("/streams", auth(addDefaultHeaders(mkstream)))
+	p.PostFunc("/streams/:uuid", auth(addDefaultHeaders(pub)))
 	p.GetFunc("/streams/:uuid", addDefaultHeaders(sub))
 
 	return logRequest(enforceHTTPS(p.ServeHTTP))

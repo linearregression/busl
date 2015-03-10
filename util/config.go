@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	Creds              = flag.String("creds", os.Getenv("CREDS"), "user1:pass1|user2:pass2")
 	EnforceHTTPS       = flag.Bool("enforceHttps", os.Getenv("ENFORCE_HTTPS") == "1", "Whether to enforce use of HTTPS.")
 	HeartbeatDuration  = flag.Duration("subscribeHeartbeatDuration", time.Second*10, "Heartbeat interval for HTTP stream subscriptions.")
 	HttpPort           = flag.String("httpPort", os.Getenv("PORT"), "HTTP port for the server.")

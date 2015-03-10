@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/heroku/authenticater"
 	"github.com/heroku/busl/util"
 )
 
@@ -24,6 +25,18 @@ func enforceHTTPS(fn http.HandlerFunc) http.HandlerFunc {
 		}
 
 		fn(w, r)
+	}
+}
+
+func auth(fn http.HandlerFunc) http.HandlerFunc {
+	if *util.Creds == "" {
+		return fn
+	}
+
+	if auth, err := authenticater.NewBasicAuthFromString(*util.Creds); err != nil {
+		panic(err)
+	} else {
+		return authenticater.WrapAuth(auth, fn)
 	}
 }
 

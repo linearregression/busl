@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/heroku/busl/broker"
-	. "github.com/heroku/busl/util"
+	"github.com/heroku/busl/util"
 	. "gopkg.in/check.v1"
 	"io"
 	"io/ioutil"
@@ -85,7 +85,7 @@ func (s *HttpServerSuite) TestPubWithoutTransferEncoding(c *C) {
 }
 
 func (s *HttpServerSuite) TestSub(c *C) {
-	streamId, _ := NewUUID()
+	streamId, _ := util.NewUUID()
 	registrar := broker.NewRedisRegistrar()
 	registrar.Register(streamId)
 	writer, _ := broker.NewWriter(streamId)
@@ -93,7 +93,7 @@ func (s *HttpServerSuite) TestSub(c *C) {
 	request := newRequest("GET", sf("/streams/%s", streamId), "")
 	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	waiter := TimeoutFunc(time.Millisecond*5, func() {
+	waiter := util.TimeoutFunc(time.Millisecond*5, func() {
 		sub(response, request)
 	})
 
@@ -106,7 +106,7 @@ func (s *HttpServerSuite) TestSub(c *C) {
 }
 
 func (s *HttpServerSuite) TestPubSub(c *C) {
-	streamId, _ := NewUUID()
+	streamId, _ := util.NewUUID()
 	registrar := broker.NewRedisRegistrar()
 	registrar.Register(streamId)
 
@@ -116,14 +116,14 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
 	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	pubBlocker := TimeoutFunc(time.Millisecond*5, func() {
+	pubBlocker := util.TimeoutFunc(time.Millisecond*5, func() {
 		pub(pubResponse, pubRequest)
 	})
 
 	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
 	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	subBlocker := TimeoutFunc(time.Millisecond*5, func() {
+	subBlocker := util.TimeoutFunc(time.Millisecond*5, func() {
 		sub(subResponse, subRequest)
 	})
 
@@ -140,7 +140,7 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 }
 
 func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
-	streamId, _ := NewUUID()
+	streamId, _ := util.NewUUID()
 	registrar := broker.NewRedisRegistrar()
 	registrar.Register(streamId)
 
@@ -150,14 +150,14 @@ func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
 	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
 	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	pubBlocker := TimeoutFunc(time.Millisecond*5, func() {
+	pubBlocker := util.TimeoutFunc(time.Millisecond*5, func() {
 		pub(pubResponse, pubRequest)
 	})
 
 	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
 	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	subBlocker := TimeoutFunc(time.Millisecond*5, func() {
+	subBlocker := util.TimeoutFunc(time.Millisecond*5, func() {
 		sub(subResponse, subRequest)
 	})
 
@@ -216,6 +216,43 @@ func (s *HttpServerSuite) TestSubWaitingPub(c *C) {
 	c.Assert(err, IsNil)
 
 	<-done
+}
+
+func (s *HttpServerSuite) TestAuthentication(c *C) {
+	*util.Creds = "u:pass1|u:pass2"
+	defer func() {
+		*util.Creds = ""
+	}()
+
+	// Start the server in a randomly assigned port
+	server := httptest.NewServer(app())
+	defer server.Close()
+
+	transport := &http.Transport{}
+	client := &http.Client{Transport: transport}
+
+	// Validate that we return 401 for empty and invalid tokens
+	for _, token := range []string{"", "invalid"} {
+		request := newRequest("POST", server.URL+"/streams", "")
+		if token != "" {
+			request.SetBasicAuth("", token)
+		}
+		resp, err := client.Do(request)
+		defer resp.Body.Close()
+		c.Assert(err, Equals, nil)
+		c.Assert(resp.Status, Equals, "401 Unauthorized")
+	}
+
+	// Validate that all the colon separated token values are
+	// accepted
+	for _, token := range []string{"pass1", "pass2"} {
+		request := newRequest("POST", server.URL+"/streams", "")
+		request.SetBasicAuth("u", token)
+		resp, err := client.Do(request)
+		defer resp.Body.Close()
+		c.Assert(err, Equals, nil)
+		c.Assert(resp.Status, Equals, "200 OK")
+	}
 }
 
 type CloseNotifierRecorder struct {
