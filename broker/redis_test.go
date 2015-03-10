@@ -1,9 +1,12 @@
-package broker_test
+package broker
 
 import (
+	"io"
+	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 
-	. "github.com/heroku/busl/broker"
 	u "github.com/heroku/busl/util"
 	. "gopkg.in/check.v1"
 )
@@ -13,13 +16,13 @@ func Test(t *testing.T) { TestingT(t) }
 type RegistrarSuite struct {
 	registrar Registrar
 	uuid      u.UUID
-	broker    Broker
 }
 
 type BrokerSuite struct {
 	registrar Registrar
 	uuid      u.UUID
-	broker    Broker
+	writer    io.WriteCloser
+	reader    io.ReadCloser
 }
 
 var _ = Suite(&RegistrarSuite{})
@@ -31,7 +34,6 @@ var _ = Suite(&BrokerSuite{})
 func (s *RegistrarSuite) SetUpTest(c *C) {
 	s.registrar = NewRedisRegistrar()
 	s.uuid, _ = u.NewUUID()
-	s.broker = NewRedisBroker(s.uuid)
 }
 
 func (s *RegistrarSuite) TestRegisteredIsRegistered(c *C) {
@@ -43,15 +45,23 @@ func (s *RegistrarSuite) TestUnregisteredIsNotRegistered(c *C) {
 	c.Assert(s.registrar.IsRegistered(s.uuid), u.IsFalse)
 }
 
-func (s *RegistrarSuite) TestUnregisteredRedisSubscribe(c *C) {
-	_, err := s.broker.Subscribe(0)
-	c.Assert(err.Error(), Equals, "Channel is not registered.")
+func (s *RegistrarSuite) TestUnregisteredErrNotRegistered(c *C) {
+	// Only complains for a Reader; existing behavior allows
+	// publishers to create a channel on the fly.
+	_, err := NewReader(s.uuid)
+	c.Assert(err, Equals, errNotRegistered)
+
+	// Writers can choose any ID it wants without consequence.
+	_, err = NewWriter(s.uuid)
+	c.Assert(err, IsNil)
 }
 
-func (s *RegistrarSuite) TestRegisteredRedisSubscribe(c *C) {
+func (s *RegistrarSuite) TestRegisteredNoError(c *C) {
 	s.registrar.Register(s.uuid)
-	ch, err := s.broker.Subscribe(0)
-	defer s.broker.Unsubscribe(ch)
+	_, err := NewReader(s.uuid)
+	c.Assert(err, IsNil)
+
+	_, err = NewWriter(s.uuid)
 	c.Assert(err, IsNil)
 }
 
@@ -63,60 +73,92 @@ func (s *BrokerSuite) SetUpTest(c *C) {
 	s.registrar = NewRedisRegistrar()
 	s.uuid, _ = u.NewUUID()
 	s.registrar.Register(s.uuid)
-	s.broker = NewRedisBroker(s.uuid)
+	s.writer, _ = NewWriter(s.uuid)
+	s.reader, _ = NewReader(s.uuid)
+}
+
+func readstring(r io.Reader) string {
+	buf, _ := ioutil.ReadAll(r)
+	return string(buf)
 }
 
 func (s *BrokerSuite) TestRedisSubscribe(c *C) {
-	ch, _ := s.broker.Subscribe(0)
-	defer s.broker.Unsubscribe(ch)
-	s.broker.Write([]byte("busl"))
-	c.Assert(string(<-ch), Equals, "busl")
+	done := make(chan bool)
+	go func() {
+		c.Assert(readstring(s.reader), Equals, "busl")
+		done <- true
+	}()
+
+	s.writer.Write([]byte("busl"))
+	s.writer.Close()
+	<-done
 }
 
 func (s *BrokerSuite) TestRedisSubscribeReplay(c *C) {
-	s.broker.Write([]byte("busl"))
-	ch, _ := s.broker.Subscribe(0)
-	defer s.broker.Unsubscribe(ch)
-	c.Assert(string(<-ch), Equals, "busl")
-}
-
-func (s *BrokerSuite) TestRedisSubscribeChannelDone(c *C) {
-	redisBroker := NewRedisBroker(s.uuid)
-	redisBroker.Write([]byte("busl"))
-	redisBroker.UnsubscribeAll()
-
-	ch, _ := s.broker.Subscribe(0)
-	defer s.broker.Unsubscribe(ch)
-	c.Assert(string(<-ch), Equals, "busl")
+	s.writer.Write([]byte("busl"))
+	s.writer.Close()
+	c.Assert(readstring(s.reader), Equals, "busl")
 }
 
 func (s *BrokerSuite) TestRedisSubscribeWithOffset(c *C) {
-	s.broker.Write([]byte("busl"))
+	s.writer.Write([]byte("busl"))
+	s.writer.Close()
 
-	broker := NewRedisBroker(s.uuid)
-	ch, _ := broker.Subscribe(2)
-	defer broker.Unsubscribe(ch)
-	c.Assert(string(<-ch), Equals, "sl")
+	s.reader.(io.Seeker).Seek(2, 0)
+	defer s.reader.Close()
+	c.Assert(readstring(s.reader), Equals, "sl")
+}
+
+func (s *BrokerSuite) TestRedisSubscribeOffsetLimits(c *C) {
+	s.writer.Write([]byte("busl"))
+	s.writer.Close()
+
+	s.reader.(io.Seeker).Seek(4, 0)
+	defer s.reader.Close()
+	c.Assert(readstring(s.reader), Equals, "")
+
+	s.reader.(io.Seeker).Seek(5, 0)
+	io.Copy(os.Stdout, s.reader)
 }
 
 func (s *BrokerSuite) TestRedisSubscribeConcurrent(c *C) {
-	redisBroker := NewRedisBroker(s.uuid)
-
 	pub := make(chan bool)
 	done := make(chan bool)
 
 	go func() {
 		pub <- true
-		redisBroker.Write([]byte("busl"))
-		redisBroker.UnsubscribeAll()
+		s.writer.Write([]byte("busl"))
+		s.writer.Close()
 	}()
 
 	go func() {
 		<-pub
-		ch, _ := s.broker.Subscribe(0)
-		defer s.broker.Unsubscribe(ch)
-		c.Assert(string(<-ch), Equals, "busl")
+		c.Assert(readstring(s.reader), Equals, "busl")
 		done <- true
 	}()
+
 	<-done
+}
+
+func (s *BrokerSuite) TestRedisReadFromClosed(c *C) {
+	p := make([]byte, 10)
+
+	// this read sets replayed = true
+	s.reader.Read(p)
+	s.writer.Close()
+
+	// this read should short circuit with EOF
+	_, err := s.reader.Read(p)
+	c.Assert(err, Equals, io.EOF)
+
+	// We'll get true here because r.closed is already set
+	c.Assert(ReaderDone(s.reader), Equals, true)
+
+	// We should still get true here because doneId is set
+	r, _ := NewReader(s.uuid)
+	c.Assert(ReaderDone(r), Equals, true)
+
+	// Reader done on a regular io.Reader should return false
+	// and not panic
+	c.Assert(ReaderDone(strings.NewReader("hello")), Equals, false)
 }

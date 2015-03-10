@@ -2,6 +2,8 @@ package server
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/heroku/busl/util"
 )
@@ -49,4 +51,18 @@ func requestId(r *http.Request) (id string) {
 	}
 
 	return id
+}
+
+func offset(r *http.Request) (n int) {
+	var off string
+
+	if off = r.Header.Get("last-event-id"); off == "" {
+		if val := r.Header.Get("Range"); val != "" {
+			tuple := strings.SplitN(val, "-", 2)
+			off = tuple[0]
+		}
+	}
+
+	n, _ = strconv.Atoi(off)
+	return n
 }

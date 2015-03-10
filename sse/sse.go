@@ -3,6 +3,7 @@ package sse
 import (
 	"bytes"
 	"fmt"
+	"io"
 )
 
 const (
@@ -10,41 +11,42 @@ const (
 	data = "data: %s\n"
 )
 
-var (
-	newline = []byte{'\n'}
-)
-
-// Usage:
-//
-//     in := make(chan []byte, 10)
-//     out := make(chan []byte, 10)
-//     go sse.Transform(in, out)
-//
-//     in <- "hello"
-//     <-out // id: 5\ndata: hello\n\n
-//
-func Transform(offset int, in, out chan []byte) {
-	for {
-		msg, msgOk := <-in
-
-		if msgOk {
-			out <- format(offset, msg)
-			offset += len(msg)
-		} else {
-			close(out)
-			return
-		}
-	}
+type encoder struct {
+	reader io.Reader // stores the original reader
+	offset int64     // offset for Seek purposes
 }
 
-func format(pos int, msg []byte) []byte {
-	buf := bytes.NewBufferString(fmt.Sprintf(id, pos+len(msg)))
+func NewEncoder(r io.Reader) io.Reader {
+	return &encoder{reader: r}
+}
 
-	for _, line := range bytes.Split(msg, newline) {
-		buf.WriteString(fmt.Sprintf(data, line))
+func (r *encoder) Seek(offset int64, whence int) (n int64, err error) {
+	r.offset, err = r.reader.(io.ReadSeeker).Seek(offset, whence)
+	return r.offset, err
+}
+
+// FIXME: this version is simplified and assumes
+// that len(p) is always greater than the potential
+// length of data to be read.
+func (r *encoder) Read(p []byte) (n int, err error) {
+	n, err = r.reader.Read(p)
+
+	if n > 0 {
+		buf := format(r.offset, p[:n])
+		r.offset += int64(n)
+		n = copy(p, buf)
 	}
 
-	buf.Write(newline)
+	return n, err
+}
+
+func format(pos int64, msg []byte) []byte {
+	buf := bytes.NewBufferString(fmt.Sprintf(id, pos+int64(len(msg))))
+
+	for _, line := range bytes.Split(msg, []byte{'\n'}) {
+		buf.WriteString(fmt.Sprintf(data, line))
+	}
+	buf.Write([]byte{'\n'})
 
 	return buf.Bytes()
 }
