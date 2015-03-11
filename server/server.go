@@ -174,7 +174,7 @@ func Start(port string, shutdown <-chan struct{}) {
 	go listenForShutdown(shutdown)
 
 	if err := gracefulServer.ListenAndServe(":"+port, nil); err != nil {
-		panic(err)
+		log.Fatalf("server.server error=%v", err)
 	}
 }
 

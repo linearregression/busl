@@ -1,6 +1,7 @@
 package server
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -34,7 +35,8 @@ func auth(fn http.HandlerFunc) http.HandlerFunc {
 	}
 
 	if auth, err := authenticater.NewBasicAuthFromString(*util.Creds); err != nil {
-		panic(err)
+		log.Fatalf("server.middleware error=%v", err)
+		return nil
 	} else {
 		return authenticater.WrapAuth(auth, fn)
 	}
