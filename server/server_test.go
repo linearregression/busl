@@ -55,22 +55,24 @@ func (s *HttpServerSuite) TestMkstream(c *C) {
 }
 
 func (s *HttpServerSuite) Test410(c *C) {
-	request := newRequest("GET", "/streams/_1234", "")
+	streamId, _ := util.NewUUID()
+	request := newRequest("GET", "/streams/"+string(streamId), "")
 	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
 	sub(response, request)
 
-	c.Assert(response.Code, Equals, http.StatusGone)
+	c.Assert(response.Code, Equals, http.StatusNotFound)
 	c.Assert(response.Body.String(), Equals, "Channel is not registered.\n")
 }
 
-func (s *HttpServerSuite) TestPub(c *C) {
-	request := newRequest("POST", "/streams/1234", "")
+func (s *HttpServerSuite) TestPubNotRegistered(c *C) {
+	streamId, _ := util.NewUUID()
+	request := newRequest("POST", "/streams/"+string(streamId), "")
 	response := httptest.NewRecorder()
 
 	pub(response, request)
 
-	c.Assert(response.Code, Equals, http.StatusOK)
+	c.Assert(response.Code, Equals, http.StatusNotFound)
 }
 
 func (s *HttpServerSuite) TestPubWithoutTransferEncoding(c *C) {
@@ -150,16 +152,21 @@ func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
 	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
 	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	pubBlocker := util.TimeoutFunc(time.Millisecond*5, func() {
+	pubDone := make(chan bool)
+	subDone := make(chan bool)
+
+	go func() {
 		pub(pubResponse, pubRequest)
-	})
+		pubDone <- true
+	}()
 
 	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
 	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	subBlocker := util.TimeoutFunc(time.Millisecond*5, func() {
+	go func() {
 		sub(subResponse, subRequest)
-	})
+		subDone <- true
+	}()
 
 	expected := []byte{0x1f, 0x8b, 0x08, 0x00, 0x3f, 0x6b, 0xe1, 0x53, 0x00, 0x03, 0xed, 0xce, 0xb1, 0x0a, 0xc2, 0x30}
 	for _, m := range expected {
@@ -167,8 +174,8 @@ func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
 	}
 
 	bodyCloser.Close()
-	<-pubBlocker
-	<-subBlocker
+	<-pubDone
+	<-subDone
 
 	c.Assert(subResponse.Code, Equals, http.StatusOK)
 	c.Assert(subResponse.Body.Bytes(), DeepEquals, expected)
