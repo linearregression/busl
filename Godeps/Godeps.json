@@ -20,6 +20,10 @@
 			"Rev": "61e2910408efd40dafb3c7d856a4cf8aeb5fb1c6"
 		},
 		{
+			"ImportPath": "github.com/heroku/authenticater",
+			"Rev": "90765b9b92e3aef6da4b217586e9b64e0aee8378"
+		},
+		{
 			"ImportPath": "github.com/heroku/rollbar",
 			"Comment": "v0.3.0",
 			"Rev": "197e8a4fd165c96afe325b2297cf3bcaa5b9a6b4"

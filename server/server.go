@@ -161,7 +161,7 @@ func app() http.Handler {
 	p := pat.New()
 
 	p.GetFunc("/health", addDefaultHeaders(health))
-	p.PostFunc("/streams", addDefaultHeaders(mkstream))
+	p.PostFunc("/streams", auth(addDefaultHeaders(mkstream)))
 	p.PostFunc("/streams/:uuid", addDefaultHeaders(pub))
 	p.GetFunc("/streams/:uuid", addDefaultHeaders(sub))
 
@@ -174,7 +174,7 @@ func Start(port string, shutdown <-chan struct{}) {
 	go listenForShutdown(shutdown)
 
 	if err := gracefulServer.ListenAndServe(":"+port, nil); err != nil {
-		panic(err)
+		log.Fatalf("server.server error=%v", err)
 	}
 }
 
