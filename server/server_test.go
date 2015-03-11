@@ -152,16 +152,21 @@ func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
 	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
 	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	pubBlocker := util.TimeoutFunc(time.Millisecond*5, func() {
+	pubDone := make(chan bool)
+	subDone := make(chan bool)
+
+	go func() {
 		pub(pubResponse, pubRequest)
-	})
+		pubDone <- true
+	}()
 
 	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
 	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	subBlocker := util.TimeoutFunc(time.Millisecond*5, func() {
+	go func() {
 		sub(subResponse, subRequest)
-	})
+		subDone <- true
+	}()
 
 	expected := []byte{0x1f, 0x8b, 0x08, 0x00, 0x3f, 0x6b, 0xe1, 0x53, 0x00, 0x03, 0xed, 0xce, 0xb1, 0x0a, 0xc2, 0x30}
 	for _, m := range expected {
@@ -169,8 +174,8 @@ func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
 	}
 
 	bodyCloser.Close()
-	<-pubBlocker
-	<-subBlocker
+	<-pubDone
+	<-subDone
 
 	c.Assert(subResponse.Code, Equals, http.StatusOK)
 	c.Assert(subResponse.Body.Bytes(), DeepEquals, expected)
