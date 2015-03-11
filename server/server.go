@@ -10,7 +10,6 @@ import (
 
 	"github.com/braintree/manners"
 	"github.com/cyberdelia/pat"
-	"github.com/heroku/busl/assets"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/sse"
 	"github.com/heroku/busl/util"
@@ -60,7 +59,7 @@ func pub(w http.ResponseWriter, r *http.Request) {
 
 	writer, err := broker.NewWriter(uuid)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		handleError(w, r, err)
 		return
 	}
 	defer writer.Close()
@@ -93,18 +92,10 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	uuid := util.UUID(r.URL.Query().Get(":uuid"))
 
 	rd, err := broker.NewReader(uuid)
-
 	if err != nil {
-		message := "Channel is not registered."
-		if r.Header.Get("Accept") == "text/ascii; version=feral" {
-			message = assets.HttpCatGone
-		}
-
-		http.Error(w, message, http.StatusGone)
-		f.Flush()
+		handleError(w, r, err)
 		return
 	}
-
 	defer rd.Close()
 
 	// Get the offset from Last-Event-ID: or Range:
