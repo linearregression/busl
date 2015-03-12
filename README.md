@@ -59,3 +59,9 @@ $ godep go run main.go
 ## deploy
 
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
+
+## docker setup
+
+```sh
+docker-compose up
+```
