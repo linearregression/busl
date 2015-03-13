@@ -1,5 +1,5 @@
-busl:
-  entrypoint: /app/bin/busl
+web:
+  command: busl
   build: .
   links:
    - redis
