@@ -59,3 +59,17 @@ $ godep go run main.go
 ## deploy
 
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
+
+## docker setup
+
+```sh
+# Start
+$ docker-compose start
+
+# Grab the host / port combination chosen by docker
+$ export URL=$(docker-compose port web 5000)
+
+# Check health status
+$ curl $URL/health
+OK
+```

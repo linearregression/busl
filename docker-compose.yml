@@ -1,0 +1,12 @@
+web:
+  command: busl
+  build: .
+  links:
+   - redis
+  ports:
+    - 5000
+  environment:
+    PORT: 5000
+    REDIS_URL: redis://redis:6379
+redis:
+  image: redis:latest
