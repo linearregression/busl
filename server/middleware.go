@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/heroku/authenticater"
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/authenticater"
 	"github.com/heroku/busl/util"
 )
 

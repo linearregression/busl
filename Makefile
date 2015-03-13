@@ -1,7 +1,7 @@
 test: .PHONY
-	env $$(cat .env) godep go test ./...
+	env $$(cat .env) go test ./...
 
 web: .PHONY
-	env $$(cat .env) godep go run main.go
+	env $$(cat .env) go run main.go
 
 .PHONY:

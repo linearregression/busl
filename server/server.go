@@ -8,12 +8,12 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/braintree/manners"
-	"github.com/cyberdelia/pat"
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/braintree/manners"
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/cyberdelia/pat"
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/rollbar"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/sse"
 	"github.com/heroku/busl/util"
-	"github.com/heroku/rollbar"
 )
 
 var gracefulServer *manners.GracefulServer

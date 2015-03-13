@@ -3,9 +3,9 @@ package server
 import (
 	"bytes"
 	"fmt"
+	. "github.com/heroku/busl/Godeps/_workspace/src/gopkg.in/check.v1"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/util"
-	. "gopkg.in/check.v1"
 	"io"
 	"io/ioutil"
 	"net/http"

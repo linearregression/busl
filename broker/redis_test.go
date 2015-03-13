@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	. "github.com/heroku/busl/Godeps/_workspace/src/gopkg.in/check.v1"
 	u "github.com/heroku/busl/util"
-	. "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { TestingT(t) }
