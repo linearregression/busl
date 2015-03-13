@@ -63,5 +63,13 @@ $ godep go run main.go
 ## docker setup
 
 ```sh
-docker-compose up
+# Start
+$ docker-compose start
+
+# Grab the host / port combination chosen by docker
+$ export URL=$(docker-compose port web 5000)
+
+# Check health status
+$ curl $URL/health
+OK
 ```
