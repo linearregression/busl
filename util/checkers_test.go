@@ -1,8 +1,8 @@
 package util_test
 
 import (
+	check "github.com/heroku/busl/Godeps/_workspace/src/gopkg.in/check.v1"
 	. "github.com/heroku/busl/util"
-	check "gopkg.in/check.v1"
 	"testing"
 )
 

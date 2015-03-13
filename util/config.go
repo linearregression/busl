@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/heroku/rollbar"
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/rollbar"
 )
 
 var (
