@@ -12,7 +12,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -95,9 +94,11 @@ func (s *HttpServerSuite) TestSub(c *C) {
 	request := newRequest("GET", sf("/streams/%s", streamId), "")
 	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	waiter := util.TimeoutFunc(time.Millisecond*5, func() {
+	waiter := make(chan bool)
+	go func() {
 		sub(response, request)
-	})
+		waiter <- true
+	}()
 
 	writer.Write([]byte("busl1"))
 	writer.Close()
@@ -118,16 +119,20 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
 	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	pubBlocker := util.TimeoutFunc(time.Millisecond*5, func() {
+	pubBlocker := make(chan bool)
+	go func() {
 		pub(pubResponse, pubRequest)
-	})
+		pubBlocker <- true
+	}()
 
 	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
 	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
 
-	subBlocker := util.TimeoutFunc(time.Millisecond*5, func() {
+	subBlocker := make(chan bool)
+	go func() {
 		sub(subResponse, subRequest)
-	})
+		subBlocker <- true
+	}()
 
 	for _, m := range []string{"first", " ", "second", " ", "third"} {
 		body.Write([]byte(m))
