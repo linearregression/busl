@@ -11,36 +11,33 @@ const prefix = "busl"
 const defaultDomain = "development"
 
 func init() {
-	log.SetPrefix(fmt.Sprintf("busl source=%s pid=%v ", buslSource(envOrDefaultString("DOMAIN", defaultDomain)), os.Getpid()))
+	log.SetPrefix(fmt.Sprintf("%s source=%s pid=%v ", prefix, source(), os.Getpid()))
 	log.SetFlags(0)
 }
 
-func envOrDefaultString(envvar, envdefault string) string {
-	var v string
-	if e := os.Getenv(envvar); e != "" {
-		v = e
-	} else {
-		v = envdefault
+func env(key, fallback string) (val string) {
+	if val = os.Getenv(key); val == "" {
+		val = fallback
 	}
 
-	return v
+	return val
 }
 
-func environment(domain string) string {
-	if domain == defaultDomain {
-		return domain
-	}
-
-	// reverse the domain
+// Returns the reversed domain name notation, e.g.
+//
+//     heroku.com => com.heroku
+//     staging.heroku.com => com.heroku.staging
+//
+// see: http://en.wikipedia.org/wiki/Reverse_domain_name_notation
+func reverseDNS(domain string) string {
 	s := strings.Split(domain, ".")
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}
-	s = append(s, prefix)
 	return strings.Join(s, ".")
 }
 
-func buslSource(domain string) string {
-	parts := []string{environment(domain)}
-	return strings.Join(parts, ".")
+func source() string {
+	domain := env("DOMAIN", defaultDomain)
+	return reverseDNS(fmt.Sprintf("%s.%s", prefix, domain))
 }
