@@ -38,11 +38,11 @@ func (s *RegistrarSuite) SetUpTest(c *C) {
 
 func (s *RegistrarSuite) TestRegisteredIsRegistered(c *C) {
 	s.registrar.Register(s.uuid)
-	c.Assert(s.registrar.IsRegistered(s.uuid), u.IsTrue)
+	c.Assert(s.registrar.IsRegistered(s.uuid), Equals, true)
 }
 
 func (s *RegistrarSuite) TestUnregisteredIsNotRegistered(c *C) {
-	c.Assert(s.registrar.IsRegistered(s.uuid), u.IsFalse)
+	c.Assert(s.registrar.IsRegistered(s.uuid), Equals, false)
 }
 
 func (s *RegistrarSuite) TestUnregisteredErrNotRegistered(c *C) {
