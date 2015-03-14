@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"time"
 )
 
 type UUID string
@@ -57,18 +56,6 @@ func CountWithData(metric string, count int64, extraData string, v ...interface{
 	} else {
 		log.Printf("count#%s=%d %s", metric, count, fmt.Sprintf(extraData, v...))
 	}
-}
-
-func TimeoutFunc(d time.Duration, ƒ func()) (ch chan bool) {
-	ch = make(chan bool)
-	time.AfterFunc(d, func() {
-		ch <- false
-	})
-	go func() {
-		ƒ()
-		ch <- true
-	}()
-	return ch
 }
 
 func AwaitSignals(signals ...os.Signal) <-chan struct{} {
