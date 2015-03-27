@@ -15,12 +15,12 @@ type writer struct {
 
 var ErrNotRegistered = errors.New("Channel is not registered.")
 
-func NewWriter(uuid util.UUID) (io.WriteCloser, error) {
-	if !NewRedisRegistrar().IsRegistered(uuid) {
+func NewWriter(key string) (io.WriteCloser, error) {
+	if !NewRedisRegistrar().IsRegistered(key) {
 		return nil, ErrNotRegistered
 	}
 
-	return &writer{channel(uuid)}, nil
+	return &writer{channel(key)}, nil
 }
 
 func (w *writer) Close() error {
@@ -57,13 +57,13 @@ type reader struct {
 	mutex    *sync.Mutex
 }
 
-func NewReader(uuid util.UUID) (io.ReadCloser, error) {
-	if !NewRedisRegistrar().IsRegistered(uuid) {
+func NewReader(key string) (io.ReadCloser, error) {
+	if !NewRedisRegistrar().IsRegistered(key) {
 		return nil, ErrNotRegistered
 	}
 
 	psc := redis.PubSubConn{redisPool.Get()}
-	channel := channel(uuid)
+	channel := channel(key)
 	psc.PSubscribe(channel.wildcardId())
 
 	rd := &reader{

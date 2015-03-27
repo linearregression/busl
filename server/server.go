@@ -50,7 +50,7 @@ func health(w http.ResponseWriter, r *http.Request) {
 }
 
 func pub(w http.ResponseWriter, r *http.Request) {
-	uuid := util.UUID(r.URL.Query().Get(":uuid"))
+	uuid := r.URL.Query().Get(":uuid")
 
 	if !util.StringSliceUtil(r.TransferEncoding).Contains("chunked") {
 		http.Error(w, "A chunked Transfer-Encoding header is required.", http.StatusBadRequest)
@@ -89,7 +89,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uuid := util.UUID(r.URL.Query().Get(":uuid"))
+	uuid := r.URL.Query().Get(":uuid")
 
 	rd, err := broker.NewReader(uuid)
 	if err != nil {

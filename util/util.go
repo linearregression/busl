@@ -9,9 +9,7 @@ import (
 	"os/signal"
 )
 
-type UUID string
-
-func NewUUID() (UUID, error) {
+func NewUUID() (string, error) {
 	uuid := make([]byte, 16)
 	n, err := rand.Read(uuid)
 	if n != len(uuid) || err != nil {
@@ -21,7 +19,7 @@ func NewUUID() (UUID, error) {
 	uuid[8] = 0x80 // variant bits see page 5
 	uuid[4] = 0x40 // version 4 Pseudo Random, see page 7
 
-	return UUID(hex.EncodeToString(uuid)), nil
+	return hex.EncodeToString(uuid), nil
 }
 
 type NullByte []byte

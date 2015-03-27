@@ -15,12 +15,12 @@ func Test(t *testing.T) { TestingT(t) }
 
 type RegistrarSuite struct {
 	registrar Registrar
-	uuid      u.UUID
+	uuid      string
 }
 
 type BrokerSuite struct {
 	registrar Registrar
-	uuid      u.UUID
+	uuid      string
 	writer    io.WriteCloser
 	reader    io.ReadCloser
 }
