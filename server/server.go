@@ -13,7 +13,6 @@ import (
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/rollbar"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/sse"
-	"github.com/heroku/busl/storage"
 	"github.com/heroku/busl/util"
 )
 
@@ -101,26 +100,12 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the offset from Last-Event-ID: or Range:
-	offset := offset(r)
-
-	rd, err := broker.NewReader(key(r))
-	if err == broker.ErrNotRegistered {
-		requestURI := key(r) + "?" + r.URL.RawQuery
-		rd, err = storage.Get(requestURI, int64(offset))
-		if err != nil {
-			handleError(w, r, err)
-			return
-		}
-	} else if err != nil {
+	rd, err := newReader(w, r)
+	if err != nil {
 		handleError(w, r, err)
 		return
-	} else {
-		if offset > 0 {
-			rd.(io.Seeker).Seek(int64(offset), 0)
-		}
-		defer rd.Close()
 	}
+	defer rd.Close()
 
 	// For default requests, we use a null byte for sending
 	// the keepalive ack.
@@ -141,7 +126,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-cache")
 
 		encoder := sse.NewEncoder(rd)
-		encoder.(io.Seeker).Seek(int64(offset), 0)
+		encoder.(io.Seeker).Seek(offset(r), 0)
 
 		rd = ioutil.NopCloser(encoder)
 

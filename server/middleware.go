@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -8,6 +9,8 @@ import (
 
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/gorilla/mux"
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/authenticater"
+	"github.com/heroku/busl/broker"
+	"github.com/heroku/busl/storage"
 	"github.com/heroku/busl/util"
 )
 
@@ -81,7 +84,7 @@ func requestId(r *http.Request) (id string) {
 	return id
 }
 
-func offset(r *http.Request) (n int) {
+func offset(r *http.Request) int64 {
 	var off string
 
 	if off = r.Header.Get("last-event-id"); off == "" {
@@ -91,10 +94,38 @@ func offset(r *http.Request) (n int) {
 		}
 	}
 
-	n, _ = strconv.Atoi(off)
-	return n
+	n, _ := strconv.Atoi(off)
+	return int64(n)
+}
+
+// Given URL:
+//   http://build-output.heroku.com/streams/1/2/3?foo=bar
+//
+// Returns:
+//   1/2/3?foo=bar
+func requestURI(r *http.Request) string {
+	return key(r) + "?" + r.URL.RawQuery
 }
 
 func key(r *http.Request) string {
 	return mux.Vars(r)["key"]
+}
+
+func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
+	// Get the offset from Last-Event-ID: or Range:
+	offset := offset(r)
+
+	rd, err := broker.NewReader(key(r))
+
+	// Not cached in the broker anymore, try the storage backend as a fallback.
+	if err == broker.ErrNotRegistered {
+		return storage.Get(requestURI(r), offset)
+	}
+
+	if offset > 0 {
+		if seeker, ok := rd.(io.Seeker); ok {
+			seeker.Seek(offset, 0)
+		}
+	}
+	return rd, err
 }
