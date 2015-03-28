@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/gorilla/mux"
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/rollbar"
 	"github.com/heroku/busl/broker"
-	"github.com/heroku/busl/sse"
 	"github.com/heroku/busl/util"
 )
 
@@ -94,50 +92,20 @@ func pub(w http.ResponseWriter, r *http.Request) {
 }
 
 func sub(w http.ResponseWriter, r *http.Request) {
-	f, ok := w.(http.Flusher)
-
-	if !ok {
+	if _, ok := w.(http.Flusher); !ok {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
 
 	rd, err := newReader(w, r)
+	if rd != nil {
+		defer rd.Close()
+	}
 	if err != nil {
 		handleError(w, r, err)
 		return
 	}
-	defer rd.Close()
-
-	// For default requests, we use a null byte for sending
-	// the keepalive ack.
-	ack := util.GetNullByte()
-
-	if r.Header.Get("Accept") == "text/event-stream" {
-
-		// As indicated in the w3 spec[1] an SSE stream
-		// that's already done should return a `204 No Content`
-		// [1]: http://www.w3.org/TR/2012/WD-eventsource-20120426/
-		if broker.ReaderDone(rd) {
-			w.WriteHeader(http.StatusNoContent)
-			f.Flush()
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-
-		encoder := sse.NewEncoder(rd)
-		encoder.(io.Seeker).Seek(offset(r), 0)
-
-		rd = ioutil.NopCloser(encoder)
-
-		// For SSE, we change the ack to a :keepalive
-		ack = []byte(":keepalive\n")
-	}
-
-	done := w.(http.CloseNotifier).CloseNotify()
-	reader := newKeepAliveReader(rd, ack, *util.HeartbeatDuration, done)
-	io.Copy(NewWriteFlusher(w), reader)
+	io.Copy(NewWriteFlusher(w), rd)
 }
 
 func app() http.Handler {

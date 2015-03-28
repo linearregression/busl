@@ -2,6 +2,7 @@ package server
 
 import (
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/gorilla/mux"
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/authenticater"
 	"github.com/heroku/busl/broker"
+	"github.com/heroku/busl/sse"
 	"github.com/heroku/busl/storage"
 	"github.com/heroku/busl/util"
 )
@@ -111,7 +113,8 @@ func key(r *http.Request) string {
 	return mux.Vars(r)["key"]
 }
 
-func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
+// Returns a broker or blob reader.
+func newStorageReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
 	// Get the offset from Last-Event-ID: or Range:
 	offset := offset(r)
 
@@ -128,4 +131,38 @@ func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
 		}
 	}
 	return rd, err
+}
+
+func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
+	rd, err := newStorageReader(w, r)
+	if err != nil {
+		if rd != nil {
+			rd.Close()
+		}
+		return rd, err
+	}
+
+	// For default requests, we use a null byte for sending
+	// the keepalive ack.
+	ack := util.GetNullByte()
+
+	if r.Header.Get("Accept") == "text/event-stream" {
+		if broker.ReaderDone(rd) {
+			return nil, errNoContent
+		}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+
+		encoder := sse.NewEncoder(rd)
+		encoder.(io.Seeker).Seek(offset(r), 0)
+
+		rd = ioutil.NopCloser(encoder)
+
+		// For SSE, we change the ack to a :keepalive
+		ack = []byte(":keepalive\n")
+	}
+
+	done := w.(http.CloseNotifier).CloseNotify()
+	return newKeepAliveReader(rd, ack, *util.HeartbeatDuration, done), nil
 }
