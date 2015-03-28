@@ -17,6 +17,7 @@ func handleError(w http.ResponseWriter, r *http.Request, err error) {
 		http.Error(w, message, http.StatusNotFound)
 
 	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		util.CountWithData("server.handleError", 1, "error=%s", err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
