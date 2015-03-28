@@ -143,7 +143,6 @@ func (s *BrokerSuite) TestRedisSubscribeConcurrent(c *C) {
 func (s *BrokerSuite) TestRedisReadFromClosed(c *C) {
 	p := make([]byte, 10)
 
-	// this read sets replayed = true
 	s.reader.Read(p)
 	s.writer.Close()
 
