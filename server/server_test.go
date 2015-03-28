@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	. "github.com/heroku/busl/Godeps/_workspace/src/gopkg.in/check.v1"
-	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/util"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
@@ -27,20 +25,11 @@ func newRequest(method, url, body string) *http.Request {
 
 func newRequestFromReader(method, url string, reader io.Reader) *http.Request {
 	request, _ := http.NewRequest(method, url, reader)
-	urlParts := strings.Split(url, "/")
 	if method == "POST" {
 		request.TransferEncoding = []string{"chunked"}
 		request.Header.Add("Transfer-Encoding", "chunked")
 	}
-	if len(urlParts) == 3 {
-		streamId := urlParts[2]
-		setStreamId(request, streamId)
-	}
 	return request
-}
-
-func setStreamId(req *http.Request, streamId string) {
-	req.URL.RawQuery = "%3Auuid=" + streamId + "&"
 }
 
 func (s *HttpServerSuite) TestMkstream(c *C) {
@@ -76,7 +65,6 @@ func (s *HttpServerSuite) TestPubNotRegistered(c *C) {
 
 func (s *HttpServerSuite) TestPubWithoutTransferEncoding(c *C) {
 	request, _ := http.NewRequest("POST", "/streams/1234", nil)
-	setStreamId(request, "1234")
 	response := httptest.NewRecorder()
 
 	pub(response, request)
@@ -85,149 +73,55 @@ func (s *HttpServerSuite) TestPubWithoutTransferEncoding(c *C) {
 	c.Assert(response.Body.String(), Equals, "A chunked Transfer-Encoding header is required.\n")
 }
 
-func (s *HttpServerSuite) TestSub(c *C) {
-	streamId, _ := util.NewUUID()
-	registrar := broker.NewRedisRegistrar()
-	registrar.Register(streamId)
-	writer, _ := broker.NewWriter(streamId)
-
-	request := newRequest("GET", sf("/streams/%s", streamId), "")
-	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
-
-	waiter := make(chan bool)
-	go func() {
-		sub(response, request)
-		waiter <- true
-	}()
-
-	writer.Write([]byte("busl1"))
-	writer.Close()
-	<-waiter
-
-	c.Assert(response.Code, Equals, http.StatusOK)
-	c.Assert(response.Body.String(), Equals, "busl1")
-}
-
 func (s *HttpServerSuite) TestPubSub(c *C) {
-	streamId, _ := util.NewUUID()
-	registrar := broker.NewRedisRegistrar()
-	registrar.Register(streamId)
-
-	body := new(bytes.Buffer)
-	bodyCloser := ioutil.NopCloser(body)
-
-	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
-	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
-
-	pubBlocker := make(chan bool)
-	go func() {
-		pub(pubResponse, pubRequest)
-		pubBlocker <- true
-	}()
-
-	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
-	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
-
-	subBlocker := make(chan bool)
-	go func() {
-		sub(subResponse, subRequest)
-		subBlocker <- true
-	}()
-
-	for _, m := range []string{"first", " ", "second", " ", "third"} {
-		body.Write([]byte(m))
-	}
-
-	bodyCloser.Close()
-	<-pubBlocker
-	<-subBlocker
-
-	c.Assert(subResponse.Code, Equals, http.StatusOK)
-	c.Assert(subResponse.Body.String(), Equals, "first second third")
-}
-
-func (s *HttpServerSuite) TestBinaryPubSub(c *C) {
-	streamId, _ := util.NewUUID()
-	registrar := broker.NewRedisRegistrar()
-	registrar.Register(streamId)
-
-	body := new(bytes.Buffer)
-	bodyCloser := ioutil.NopCloser(body)
-
-	pubRequest := newRequestFromReader("POST", sf("/streams/%s", streamId), bodyCloser)
-	pubResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
-
-	pubDone := make(chan bool)
-	subDone := make(chan bool)
-
-	go func() {
-		pub(pubResponse, pubRequest)
-		pubDone <- true
-	}()
-
-	subRequest := newRequest("GET", sf("/streams/%s", streamId), "")
-	subResponse := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
-
-	go func() {
-		sub(subResponse, subRequest)
-		subDone <- true
-	}()
-
-	expected := []byte{0x1f, 0x8b, 0x08, 0x00, 0x3f, 0x6b, 0xe1, 0x53, 0x00, 0x03, 0xed, 0xce, 0xb1, 0x0a, 0xc2, 0x30}
-	for _, m := range expected {
-		body.Write([]byte{m})
-	}
-
-	bodyCloser.Close()
-	<-pubDone
-	<-subDone
-
-	c.Assert(subResponse.Code, Equals, http.StatusOK)
-	c.Assert(subResponse.Body.Bytes(), DeepEquals, expected)
-}
-
-func (s *HttpServerSuite) TestSubWaitingPub(c *C) {
 	// Start the server in a randomly assigned port
 	server := httptest.NewServer(app())
 	defer server.Close()
 
-	// uuid = curl -XPOST <url>/streams
-	resp, err := http.Post(server.URL+"/streams", "", nil)
-	defer resp.Body.Close()
-	c.Assert(err, Equals, nil)
+	data := [][]byte{
+		[]byte{'h', 'e', 'l', 'l', 'o'},
+		[]byte{0x1f, 0x8b, 0x08, 0x00, 0x3f, 0x6b, 0xe1, 0x53, 0x00, 0x03, 0xed, 0xce, 0xb1, 0x0a, 0xc2, 0x30},
+	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	c.Assert(err, Equals, nil)
-
-	// uuid extracted
-	uuid := string(body)
-	c.Assert(len(uuid), Equals, 32)
-
-	done := make(chan bool)
-
-	go func() {
-		// curl <url>/streams/<uuid>
-		// -- waiting for publish to arrive
-		resp, err = http.Get(server.URL + "/streams/" + uuid)
+	for _, expected := range data {
+		// uuid = curl -XPOST <url>/streams
+		resp, err := http.Post(server.URL+"/streams", "", nil)
 		defer resp.Body.Close()
+		c.Assert(err, Equals, nil)
+
+		body, err := ioutil.ReadAll(resp.Body)
+		c.Assert(err, Equals, nil)
+
+		// uuid extracted
+		uuid := string(body)
+		c.Assert(len(uuid), Equals, 32)
+
+		done := make(chan bool)
+
+		go func() {
+			// curl <url>/streams/<uuid>
+			// -- waiting for publish to arrive
+			resp, err = http.Get(server.URL + "/streams/" + uuid)
+			defer resp.Body.Close()
+			c.Assert(err, IsNil)
+
+			body, _ = ioutil.ReadAll(resp.Body)
+			c.Assert(body, DeepEquals, expected)
+
+			done <- true
+		}()
+
+		transport := &http.Transport{}
+		client := &http.Client{Transport: transport}
+
+		// curl -XPOST -H "Transfer-Encoding: chunked" -d "hello" <url>/streams/<uuid>
+		req := newRequestFromReader("POST", server.URL+"/streams/"+uuid, bytes.NewReader(expected))
+		r, err := client.Do(req)
+		r.Body.Close()
 		c.Assert(err, IsNil)
 
-		body, _ = ioutil.ReadAll(resp.Body)
-		c.Assert(string(body), Equals, "Hello")
-
-		done <- true
-	}()
-
-	transport := &http.Transport{}
-	client := &http.Client{Transport: transport}
-
-	// curl -XPOST -H "Transfer-Encoding: chunked" -d "hello" <url>/streams/<uuid>
-	req := newRequestFromReader("POST", server.URL+"/streams/"+uuid, strings.NewReader("Hello"))
-	r, err := client.Do(req)
-	r.Body.Close()
-	c.Assert(err, IsNil)
-
-	<-done
+		<-done
+	}
 }
 
 func (s *HttpServerSuite) TestAuthentication(c *C) {
