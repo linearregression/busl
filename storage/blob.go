@@ -48,7 +48,9 @@ func put(requestURI string, reader io.Reader) error {
 		return err
 	}
 	res, err := process(req, http.StatusOK)
-	defer res.Body.Close()
+	if res != nil {
+		defer res.Body.Close()
+	}
 	return err
 }
 
@@ -92,6 +94,9 @@ func get(requestURI string, offset int64) (io.ReadCloser, error) {
 	req.Header.Add("Range", fmt.Sprintf("bytes=%d-", offset))
 
 	res, err := process(req, 200)
+	if res == nil {
+		return nil, err
+	}
 	return res.Body, err
 }
 

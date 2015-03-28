@@ -51,6 +51,32 @@ func ExampleEmptyStorageBaseUrl() {
 	// <nil> No Storage
 }
 
+func TestPutConnRefused(t *testing.T) {
+	*util.StorageBaseUrl = "http://localhost:0"
+	defer func() {
+		*util.StorageBaseUrl = baseURL
+	}()
+
+	err := Put("1/2/3", nil)
+
+	if err == nil {
+		t.Fatalf("Expected err got nil")
+	}
+}
+
+func TestGetConnRefused(t *testing.T) {
+	*util.StorageBaseUrl = "http://localhost:0"
+	defer func() {
+		*util.StorageBaseUrl = baseURL
+	}()
+
+	_, err := Get("1/2/3", 0)
+
+	if err == nil {
+		t.Fatalf("Expected err got nil")
+	}
+}
+
 func TestPutWithoutBaseURL(t *testing.T) {
 	*util.StorageBaseUrl = ""
 	defer func() {
