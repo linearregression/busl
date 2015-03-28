@@ -73,10 +73,12 @@ func Get(requestURI string, offset int64) (rd io.ReadCloser, err error) {
 		//   2) Any error other than errTransientStatus
 		if err == nil || err != errTransientStatus {
 			return rd, err
-		} else if rd != nil {
-			// Close the body immediately to prevent
-			// file descriptor leaks.
-			rd.(io.Closer).Close()
+		}
+
+		// Close the body immediately to prevent
+		// file descriptor leaks.
+		if rd != nil {
+			rd.Close()
 		}
 	}
 
