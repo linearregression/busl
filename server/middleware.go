@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/gorilla/mux"
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/authenticater"
 	"github.com/heroku/busl/util"
 )
@@ -92,4 +93,8 @@ func offset(r *http.Request) (n int) {
 
 	n, _ = strconv.Atoi(off)
 	return n
+}
+
+func key(r *http.Request) string {
+	return mux.Vars(r)["key"]
 }
