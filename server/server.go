@@ -136,7 +136,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	done := w.(http.CloseNotifier).CloseNotify()
-	reader := NewKeepAliveReader(rd, ack, *util.HeartbeatDuration, done)
+	reader := newKeepAliveReader(rd, ack, *util.HeartbeatDuration, done)
 	io.Copy(NewWriteFlusher(w), reader)
 }
 

@@ -22,7 +22,7 @@ type keepAliveReader struct {
 	eof      bool          // marked true when we hit EOF
 }
 
-func NewKeepAliveReader(rd io.Reader, packet []byte, interval time.Duration, done <-chan bool) io.ReadCloser {
+func newKeepAliveReader(rd io.Reader, packet []byte, interval time.Duration, done <-chan bool) io.ReadCloser {
 	ch := make(chan *payload, 100)
 
 	go func() {
