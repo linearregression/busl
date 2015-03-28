@@ -11,10 +11,6 @@
 			"Rev": "5280e250f2795914acbeb2bf3b55dd5a2d1fba52"
 		},
 		{
-			"ImportPath": "github.com/cyberdelia/pat",
-			"Rev": "ea31bfdada81cbe4019f605ed6e2887b7d39eaea"
-		},
-		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
 			"Rev": "535138d7bcd717d6531c701ef5933d98b1866257"
 		},
