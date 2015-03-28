@@ -105,11 +105,11 @@ func (rr *RedisRegistrar) IsRegistered(channel string) (registered bool) {
 	conn := redisPool.Get()
 	defer conn.Close()
 
-	result, err := redis.Int64(conn.Do("EXISTS", channel))
+	exists, err := redis.Bool(conn.Do("EXISTS", channel))
 	if err != nil {
 		util.CountWithData("RedisRegistrar.IsRegistered.error", 1, "error=%s", err)
 		return false
 	}
 
-	return result == 1
+	return exists
 }
