@@ -142,6 +142,28 @@ func (s *HttpServerSuite) TestPut(c *C) {
 	c.Assert(registrar.IsRegistered("1/2/3"), Equals, true)
 }
 
+func (s *HttpServerSuite) TestSubGoneWithBackend(c *C) {
+	uuid, _ := util.NewUUID()
+
+	storage, get, _ := fileServer(uuid)
+	defer storage.Close()
+
+	*util.StorageBaseUrl = storage.URL
+
+	server := httptest.NewServer(app())
+	defer server.Close()
+
+	get <- []byte("hello world")
+
+	resp, err := http.Get(server.URL + "/streams/" + uuid)
+	// resp, err := http.Get(storage.URL + "/1/2/3")
+	defer resp.Body.Close()
+	c.Assert(err, IsNil)
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	c.Assert(body, DeepEquals, []byte("hello world"))
+}
+
 func (s *HttpServerSuite) TestAuthentication(c *C) {
 	*util.Creds = "u:pass1|u:pass2"
 	defer func() {
@@ -203,4 +225,23 @@ func (cnr CloseNotifierRecorder) close() {
 
 func (cnr CloseNotifierRecorder) CloseNotify() <-chan bool {
 	return cnr.closed
+}
+
+func fileServer(id string) (*httptest.Server, chan []byte, chan []byte) {
+	get := make(chan []byte, 10)
+	put := make(chan []byte, 10)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/"+id, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			w.Write(<-get)
+		case "PUT":
+			b, _ := ioutil.ReadAll(r.Body)
+			put <- b
+		}
+	})
+
+	server := httptest.NewServer(mux)
+	return server, get, put
 }
