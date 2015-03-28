@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	. "github.com/heroku/busl/Godeps/_workspace/src/gopkg.in/check.v1"
+	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/util"
 	"io"
 	"io/ioutil"
@@ -74,7 +75,6 @@ func (s *HttpServerSuite) TestPubWithoutTransferEncoding(c *C) {
 }
 
 func (s *HttpServerSuite) TestPubSub(c *C) {
-	// Start the server in a randomly assigned port
 	server := httptest.NewServer(app())
 	defer server.Close()
 
@@ -124,40 +124,71 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 	}
 }
 
-func (s *HttpServerSuite) TestAuthentication(c *C) {
-	*util.Creds = "u:pass1|u:pass2"
-	defer func() {
-		*util.Creds = ""
-	}()
-
-	// Start the server in a randomly assigned port
+func (s *HttpServerSuite) TestPut(c *C) {
 	server := httptest.NewServer(app())
 	defer server.Close()
 
 	transport := &http.Transport{}
 	client := &http.Client{Transport: transport}
 
+	// uuid = curl -XPUT <url>/streams/1/2/3
+	request := newRequest("PUT", server.URL+"/streams/1/2/3", "")
+	resp, err := client.Do(request)
+	defer resp.Body.Close()
+	c.Assert(err, Equals, nil)
+	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
+
+	registrar := broker.NewRedisRegistrar()
+	c.Assert(registrar.IsRegistered("1/2/3"), Equals, true)
+}
+
+func (s *HttpServerSuite) TestAuthentication(c *C) {
+	*util.Creds = "u:pass1|u:pass2"
+	defer func() {
+		*util.Creds = ""
+	}()
+
+	server := httptest.NewServer(app())
+	defer server.Close()
+
+	transport := &http.Transport{}
+	client := &http.Client{Transport: transport}
+
+	testdata := map[string]string{
+		"POST": "/streams",
+		"PUT":  "/streams/1/2/3",
+	}
+
+	status := map[string]int{
+		"POST": http.StatusOK,
+		"PUT":  http.StatusCreated,
+	}
+
 	// Validate that we return 401 for empty and invalid tokens
 	for _, token := range []string{"", "invalid"} {
-		request := newRequest("POST", server.URL+"/streams", "")
-		if token != "" {
-			request.SetBasicAuth("", token)
+		for method, path := range testdata {
+			request := newRequest(method, server.URL+path, "")
+			if token != "" {
+				request.SetBasicAuth("", token)
+			}
+			resp, err := client.Do(request)
+			defer resp.Body.Close()
+			c.Assert(err, Equals, nil)
+			c.Assert(resp.Status, Equals, "401 Unauthorized")
 		}
-		resp, err := client.Do(request)
-		defer resp.Body.Close()
-		c.Assert(err, Equals, nil)
-		c.Assert(resp.Status, Equals, "401 Unauthorized")
 	}
 
 	// Validate that all the colon separated token values are
 	// accepted
 	for _, token := range []string{"pass1", "pass2"} {
-		request := newRequest("POST", server.URL+"/streams", "")
-		request.SetBasicAuth("u", token)
-		resp, err := client.Do(request)
-		defer resp.Body.Close()
-		c.Assert(err, Equals, nil)
-		c.Assert(resp.Status, Equals, "200 OK")
+		for method, path := range testdata {
+			request := newRequest(method, server.URL+path, "")
+			request.SetBasicAuth("u", token)
+			resp, err := client.Do(request)
+			defer resp.Body.Close()
+			c.Assert(err, Equals, nil)
+			c.Assert(resp.StatusCode, Equals, status[method])
+		}
 	}
 }
 
