@@ -13,6 +13,7 @@ import (
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/rollbar"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/sse"
+	"github.com/heroku/busl/storage"
 	"github.com/heroku/busl/util"
 )
 
@@ -100,17 +101,25 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rd, err := broker.NewReader(key(r))
-	if err != nil {
-		handleError(w, r, err)
-		return
-	}
-	defer rd.Close()
-
 	// Get the offset from Last-Event-ID: or Range:
 	offset := offset(r)
-	if offset > 0 {
-		rd.(io.Seeker).Seek(int64(offset), 0)
+
+	rd, err := broker.NewReader(key(r))
+	if err == broker.ErrNotRegistered {
+		requestURI := key(r) + "?" + r.URL.RawQuery
+		rd, err = storage.Get(requestURI, int64(offset))
+		if err != nil {
+			handleError(w, r, err)
+			return
+		}
+	} else if err != nil {
+		handleError(w, r, err)
+		return
+	} else {
+		if offset > 0 {
+			rd.(io.Seeker).Seek(int64(offset), 0)
+		}
+		defer rd.Close()
 	}
 
 	// For default requests, we use a null byte for sending
@@ -120,7 +129,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Accept") == "text/event-stream" {
 
 		// As indicated in the w3 spec[1] an SSE stream
-		// that's already done should return a 204
+		// that's already done should return a `204 No Content`
 		// [1]: http://www.w3.org/TR/2012/WD-eventsource-20120426/
 		if broker.ReaderDone(rd) {
 			w.WriteHeader(http.StatusNoContent)
