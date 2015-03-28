@@ -89,6 +89,7 @@ func pub(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%#v", err)
 		http.Error(w, "Unhandled error, please try again.", http.StatusInternalServerError)
 		rollbar.Error(rollbar.ERR, fmt.Errorf("unhandled error: %#v", err))
+
 	}
 }
 
