@@ -62,7 +62,7 @@ func put(requestURI string, reader io.Reader) error {
 //   requestURI := "1/2/3?X-Amz-Algorithm=...&..."
 //   reader, err := storage.Get(requestURI, 0)
 //
-func Get(requestURI string, offset int64) (rd io.Reader, err error) {
+func Get(requestURI string, offset int64) (rd io.ReadCloser, err error) {
 	for i := retries; i > 0; i-- {
 		rd, err = get(requestURI, offset)
 
@@ -82,7 +82,7 @@ func Get(requestURI string, offset int64) (rd io.Reader, err error) {
 	return rd, err
 }
 
-func get(requestURI string, offset int64) (io.Reader, error) {
+func get(requestURI string, offset int64) (io.ReadCloser, error) {
 	req, err := newRequest("GET", requestURI, nil)
 	if err != nil {
 		return nil, err
