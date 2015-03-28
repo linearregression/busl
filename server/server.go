@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/braintree/manners"
-	"github.com/heroku/busl/Godeps/_workspace/src/github.com/cyberdelia/pat"
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/gorilla/mux"
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/rollbar"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/sse"
@@ -45,19 +45,30 @@ func mkstream(w http.ResponseWriter, _ *http.Request) {
 	io.WriteString(w, string(uuid))
 }
 
+func put(w http.ResponseWriter, r *http.Request) {
+	registrar := broker.NewRedisRegistrar()
+
+	if err := registrar.Register(key(r)); err != nil {
+		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
+		rollbar.Error(rollbar.ERR, fmt.Errorf("unable to register stream: %#v", err))
+		util.CountWithData("put.create.fail", 1, "error=%s", err)
+		return
+	}
+	util.Count("put.create.success")
+	w.WriteHeader(http.StatusCreated)
+}
+
 func health(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK")
 }
 
 func pub(w http.ResponseWriter, r *http.Request) {
-	uuid := r.URL.Query().Get(":uuid")
-
 	if !util.StringSliceUtil(r.TransferEncoding).Contains("chunked") {
 		http.Error(w, "A chunked Transfer-Encoding header is required.", http.StatusBadRequest)
 		return
 	}
 
-	writer, err := broker.NewWriter(uuid)
+	writer, err := broker.NewWriter(key(r))
 	if err != nil {
 		handleError(w, r, err)
 		return
@@ -89,9 +100,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uuid := r.URL.Query().Get(":uuid")
-
-	rd, err := broker.NewReader(uuid)
+	rd, err := broker.NewReader(key(r))
 	if err != nil {
 		handleError(w, r, err)
 		return
@@ -137,14 +146,20 @@ func sub(w http.ResponseWriter, r *http.Request) {
 }
 
 func app() http.Handler {
-	p := pat.New()
+	r := mux.NewRouter()
 
-	p.GetFunc("/health", addDefaultHeaders(health))
-	p.PostFunc("/streams", auth(addDefaultHeaders(mkstream)))
-	p.PostFunc("/streams/:uuid", addDefaultHeaders(pub))
-	p.GetFunc("/streams/:uuid", addDefaultHeaders(sub))
+	r.HandleFunc("/health", addDefaultHeaders(health))
 
-	return logRequest(enforceHTTPS(p.ServeHTTP))
+	// Legacy endpoint for creating the uuid `key` for you.
+	r.HandleFunc("/streams", auth(addDefaultHeaders(mkstream)))
+
+	// New `key` design for allowing any kind of id to be decided
+	// by the caller (in this case, it mirrors what we have in S3).
+	r.HandleFunc("/streams/{key:.+}", addDefaultHeaders(sub)).Methods("GET")
+	r.HandleFunc("/streams/{key:.+}", addDefaultHeaders(pub)).Methods("POST")
+	r.HandleFunc("/streams/{key:.+}", auth(addDefaultHeaders(put))).Methods("PUT")
+
+	return logRequest(enforceHTTPS(r.ServeHTTP))
 }
 
 func Start(port string, shutdown <-chan struct{}) {
