@@ -105,7 +105,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		handleError(w, r, err)
 		return
 	}
-	io.Copy(NewWriteFlusher(w), rd)
+	io.Copy(newWriteFlusher(w), rd)
 }
 
 func app() http.Handler {

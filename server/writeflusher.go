@@ -12,7 +12,7 @@ type writeFlusher struct {
 	w io.Writer
 }
 
-func NewWriteFlusher(w io.Writer) io.Writer {
+func newWriteFlusher(w io.Writer) io.Writer {
 	return &writeFlusher{w}
 }
 
