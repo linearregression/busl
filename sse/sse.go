@@ -21,7 +21,9 @@ func NewEncoder(r io.Reader) io.Reader {
 }
 
 func (r *encoder) Seek(offset int64, whence int) (n int64, err error) {
-	r.offset, err = r.reader.(io.ReadSeeker).Seek(offset, whence)
+	if seeker, ok := r.reader.(io.ReadSeeker); ok {
+		r.offset, err = seeker.Seek(offset, whence)
+	}
 	return r.offset, err
 }
 
