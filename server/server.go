@@ -87,8 +87,11 @@ func pub(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%#v", err)
 		http.Error(w, "Unhandled error, please try again.", http.StatusInternalServerError)
 		rollbar.Error(rollbar.ERR, fmt.Errorf("unhandled error: %#v", err))
-
+		return
 	}
+
+	// Asynchronously upload the output to our defined storage backend.
+	go storeOutput(key(r), requestURI(r))
 }
 
 func sub(w http.ResponseWriter, r *http.Request) {
