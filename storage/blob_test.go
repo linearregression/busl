@@ -48,7 +48,7 @@ func ExampleEmptyStorageBaseUrl() {
 	fmt.Println(absoluteURL("/1/2/3?foo=bar"))
 
 	//Output:
-	// <nil> No Storage
+	// <nil> No storage defined
 }
 
 func TestPutConnRefused(t *testing.T) {

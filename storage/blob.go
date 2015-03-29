@@ -14,7 +14,7 @@ import (
 const retries = 3
 
 var (
-	ErrNoStorage = errors.New("No Storage")
+	ErrNoStorage = errors.New("No storage defined")
 	Err4xx       = errors.New("HTTP 4xx")
 	Err5xx       = errors.New("HTTP 5xx")
 	ErrRange     = errors.New("HTTP 416: Invalid Range")
