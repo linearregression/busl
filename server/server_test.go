@@ -19,6 +19,7 @@ type HttpServerSuite struct{}
 
 var _ = Suite(&HttpServerSuite{})
 var sf = fmt.Sprintf
+var baseURL = *util.StorageBaseUrl
 
 func newRequest(method, url, body string) *http.Request {
 	return newRequestFromReader(method, url, bytes.NewBufferString(body))
@@ -149,6 +150,9 @@ func (s *HttpServerSuite) TestSubGoneWithBackend(c *C) {
 	defer storage.Close()
 
 	*util.StorageBaseUrl = storage.URL
+	defer func() {
+		*util.StorageBaseUrl = baseURL
+	}()
 
 	server := httptest.NewServer(app())
 	defer server.Close()
@@ -162,6 +166,35 @@ func (s *HttpServerSuite) TestSubGoneWithBackend(c *C) {
 
 	body, _ := ioutil.ReadAll(resp.Body)
 	c.Assert(body, DeepEquals, []byte("hello world"))
+}
+
+func (s *HttpServerSuite) TestPutWithBackend(c *C) {
+	uuid, _ := util.NewUUID()
+
+	storage, _, put := fileServer(uuid)
+	defer storage.Close()
+
+	*util.StorageBaseUrl = storage.URL
+	defer func() {
+		*util.StorageBaseUrl = baseURL
+	}()
+
+	server := httptest.NewServer(app())
+	defer server.Close()
+
+	transport := &http.Transport{}
+	client := &http.Client{Transport: transport}
+
+	registrar := broker.NewRedisRegistrar()
+	registrar.Register(uuid)
+
+	// uuid = curl -XPUT <url>/streams/1/2/3
+	request := newRequest("POST", server.URL+"/streams/"+uuid, "hello world")
+	resp, err := client.Do(request)
+	defer resp.Body.Close()
+	c.Assert(err, Equals, nil)
+	c.Assert(resp.StatusCode, Equals, 200)
+	c.Assert(<-put, DeepEquals, []byte("hello world"))
 }
 
 func (s *HttpServerSuite) TestAuthentication(c *C) {
