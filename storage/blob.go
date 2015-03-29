@@ -36,17 +36,23 @@ func Put(requestURI string, reader io.Reader) (err error) {
 	for i := retries; i > 0; i-- {
 		err = put(requestURI, reader)
 
-		// Break if we get any error other than Err5xx
+		// Break if we get nil / any error other than Err5xx
+		if err == nil {
+			util.Count("storage.put.success")
+			return nil
+		}
+
 		if err != Err5xx {
+			util.Count("storage.put.error")
 			return err
 		}
 
 		// Log the put retry
-		util.Count("storage.Put.retry")
+		util.Count("storage.put.retry")
 	}
 
 	// We've ran out of retries
-	util.Count("storage.Put.error")
+	util.Count("storage.put.maxretries")
 	return err
 }
 
@@ -76,10 +82,13 @@ func Get(requestURI string, offset int64) (rd io.ReadCloser, err error) {
 	for i := retries; i > 0; i-- {
 		rd, err = get(requestURI, offset)
 
-		// Break if we get:
-		//   1) No errors
-		//   2) Any error other than Err5xx
-		if err == nil || err != Err5xx {
+		if err == nil {
+			util.Count("storage.get.success")
+			return rd, nil
+		}
+
+		if err != Err5xx {
+			util.Count("storage.get.error")
 			return rd, err
 		}
 
@@ -89,11 +98,11 @@ func Get(requestURI string, offset int64) (rd io.ReadCloser, err error) {
 			rd.Close()
 		}
 
-		util.Count("storage.Get.retry")
+		util.Count("storage.get.retry")
 	}
 
 	// We've ran out of retries
-	util.Count("storage.Get.error")
+	util.Count("storage.get.maxretries")
 	return rd, err
 }
 
