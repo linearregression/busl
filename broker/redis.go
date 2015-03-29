@@ -113,3 +113,10 @@ func (rr *RedisRegistrar) IsRegistered(channel string) (registered bool) {
 
 	return exists
 }
+
+func Get(channel string) ([]byte, error) {
+	conn := redisPool.Get()
+	defer conn.Close()
+
+	return redis.Bytes(conn.Do("GET", channel))
+}
