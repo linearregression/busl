@@ -13,7 +13,8 @@ import (
 var errNoContent = errors.New("No Content")
 
 func handleError(w http.ResponseWriter, r *http.Request, err error) {
-	if err == broker.ErrNotRegistered || err == storage.ErrNoStorage {
+	switch err {
+	case broker.ErrNotRegistered, storage.ErrNoStorage, storage.Err4xx:
 		message := "Channel is not registered."
 		if r.Header.Get("Accept") == "text/ascii; version=feral" {
 			message = assets.HttpCatGone
@@ -21,14 +22,17 @@ func handleError(w http.ResponseWriter, r *http.Request, err error) {
 
 		http.Error(w, message, http.StatusNotFound)
 
-	} else if err == errNoContent {
+	case storage.ErrRange:
+		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+
+	case errNoContent:
 		// As indicated in the w3 spec[1] an SSE stream
 		// that's already done should return a `204 No Content`
 		// [1]: http://www.w3.org/TR/2012/WD-eventsource-20120426/
 		w.WriteHeader(http.StatusNoContent)
 
-	} else if err != nil {
+	default:
 		util.CountWithData("server.handleError", 1, "error=%s", err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 }

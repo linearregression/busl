@@ -13,8 +13,12 @@ import (
 // Number of times we should retry a failed HTTP request.
 const retries = 3
 
-var ErrNoStorage = errors.New("No Storage")
-var errTransientStatus = errors.New("HTTP 4xx..5xx")
+var (
+	ErrNoStorage = errors.New("No Storage")
+	Err4xx       = errors.New("HTTP 4xx")
+	Err5xx       = errors.New("HTTP 5xx")
+	ErrRange     = errors.New("HTTP 416: Invalid Range")
+)
 
 // Stores the given reader onto the underlying blob storage
 // with the given requestURI. The requestURI is resolved
@@ -32,13 +36,17 @@ func Put(requestURI string, reader io.Reader) (err error) {
 	for i := retries; i > 0; i-- {
 		err = put(requestURI, reader)
 
-		// Break if we get any error other than errTransientStatus
-		if err != errTransientStatus {
+		// Break if we get any error other than Err5xx
+		if err != Err5xx {
 			return err
 		}
+
+		// Log the put retry
+		util.Count("storage.Put.retry")
 	}
 
 	// We've ran out of retries
+	util.Count("storage.Put.error")
 	return err
 }
 
@@ -47,7 +55,7 @@ func put(requestURI string, reader io.Reader) error {
 	if err != nil {
 		return err
 	}
-	res, err := process(req, http.StatusOK)
+	res, err := process(req)
 	if res != nil {
 		defer res.Body.Close()
 	}
@@ -70,8 +78,8 @@ func Get(requestURI string, offset int64) (rd io.ReadCloser, err error) {
 
 		// Break if we get:
 		//   1) No errors
-		//   2) Any error other than errTransientStatus
-		if err == nil || err != errTransientStatus {
+		//   2) Any error other than Err5xx
+		if err == nil || err != Err5xx {
 			return rd, err
 		}
 
@@ -80,9 +88,12 @@ func Get(requestURI string, offset int64) (rd io.ReadCloser, err error) {
 		if rd != nil {
 			rd.Close()
 		}
+
+		util.Count("storage.Get.retry")
 	}
 
 	// We've ran out of retries
+	util.Count("storage.Get.error")
 	return rd, err
 }
 
@@ -95,7 +106,7 @@ func get(requestURI string, offset int64) (io.ReadCloser, error) {
 	req.Header.Add("Transfer-Encoding", "chunked")
 	req.Header.Add("Range", fmt.Sprintf("bytes=%d-", offset))
 
-	res, err := process(req, 200)
+	res, err := process(req)
 	if res == nil {
 		return nil, err
 	}
@@ -116,26 +127,23 @@ func newRequest(method, requestURI string, reader io.Reader) (*http.Request, err
 // Executes the HTTP request:
 // Errors:
 //
-//   errTransientStatus
-//       if we get a 4xx / 5xx status code (used internally
-//       to retry requests)
+//   - Err5xx
+//   - Err4xx
+//   - ErrRange
 //
-//   unexpected status code (e.g. `Expected 200, got 416`)
-//       if the status code retrieved is not equal to `expect`.
-//
-// TODO: possibly allow an array of expected status codes instead.
-//
-func process(req *http.Request, expect int) (*http.Response, error) {
+func process(req *http.Request) (*http.Response, error) {
 	transport := &http.Transport{}
 	client := &http.Client{Transport: transport}
 
 	res, err := client.Do(req)
-
-	if err == nil && res.StatusCode != expect {
-		if res.StatusCode >= 400 {
-			err = errTransientStatus
-		} else {
-			err = fmt.Errorf("Expected %d, got %d", expect, res.StatusCode)
+	if err == nil {
+		switch {
+		case res.StatusCode == 416:
+			err = ErrRange
+		case res.StatusCode >= 500:
+			err = Err5xx
+		case res.StatusCode >= 400:
+			err = Err4xx
 		}
 	}
 	return res, err
