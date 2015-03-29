@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"io"
 	"io/ioutil"
 	"log"
@@ -165,4 +166,14 @@ func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
 
 	done := w.(http.CloseNotifier).CloseNotify()
 	return newKeepAliveReader(rd, ack, *util.HeartbeatDuration, done), nil
+}
+
+func storeOutput(channel string, requestURI string) {
+	if buf, err := broker.Get(channel); err == nil {
+		if err := storage.Put(requestURI, bytes.NewBuffer(buf)); err != nil {
+			util.CountWithData("server.storeOutput.put.error", 1, "err=%s", err.Error())
+		}
+	} else {
+		util.CountWithData("server.storeOutput.get.error", 1, "err=%s", err.Error())
+	}
 }
