@@ -15,9 +15,9 @@ const retries = 3
 
 var (
 	ErrNoStorage = errors.New("No storage defined")
-	Err4xx       = errors.New("HTTP 4xx")
-	Err5xx       = errors.New("HTTP 5xx")
+	ErrNotFound  = errors.New("HTTP 404")
 	ErrRange     = errors.New("HTTP 416: Invalid Range")
+	Err5xx       = errors.New("HTTP 5xx")
 )
 
 // Stores the given reader onto the underlying blob storage
@@ -149,10 +149,12 @@ func process(req *http.Request) (*http.Response, error) {
 		switch {
 		case res.StatusCode == 416:
 			err = ErrRange
+		case res.StatusCode == 404 || res.StatusCode == 403:
+			err = ErrNotFound
 		case res.StatusCode >= 500:
 			err = Err5xx
-		case res.StatusCode >= 400:
-			err = Err4xx
+		case res.StatusCode != 200:
+			err = fmt.Errorf("Expected 200, got %d", res.StatusCode)
 		}
 	}
 	return res, err
