@@ -42,6 +42,24 @@ func (s *SseSuite) TestNoNewline(c *C) {
 	}
 }
 
+func (s *SseSuite) TestNonSeekableReader(c *C) {
+	// Seek the underlying reader before
+	// passing to LimitReader: comparably similar
+	// to scenario when reading from an http.Response
+	r := strings.NewReader("hello world")
+	r.Seek(10, 0)
+
+	// Use LimitReader to hide the Seeker interface
+	lr := io.LimitReader(r, 11)
+
+	enc := NewEncoder(lr)
+	enc.(io.Seeker).Seek(10, 0)
+
+	// `id` should be 11 even though the underlying
+	// reader wasn't seeked at all.
+	c.Assert(readstring(enc), Equals, "id: 11\ndata: d\n\n")
+}
+
 func readstring(r io.Reader) string {
 	buf, _ := ioutil.ReadAll(r)
 	return string(buf)
