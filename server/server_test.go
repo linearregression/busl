@@ -160,7 +160,6 @@ func (s *HttpServerSuite) TestSubGoneWithBackend(c *C) {
 	get <- []byte("hello world")
 
 	resp, err := http.Get(server.URL + "/streams/" + uuid)
-	// resp, err := http.Get(storage.URL + "/1/2/3")
 	defer resp.Body.Close()
 	c.Assert(err, IsNil)
 
