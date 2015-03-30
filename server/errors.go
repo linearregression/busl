@@ -14,7 +14,7 @@ var errNoContent = errors.New("No Content")
 
 func handleError(w http.ResponseWriter, r *http.Request, err error) {
 	switch err {
-	case broker.ErrNotRegistered, storage.ErrNoStorage, storage.Err4xx:
+	case broker.ErrNotRegistered, storage.ErrNoStorage, storage.ErrNotFound:
 		message := "Channel is not registered."
 		if r.Header.Get("Accept") == "text/ascii; version=feral" {
 			message = assets.HttpCatGone
