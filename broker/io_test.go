@@ -9,7 +9,7 @@ import (
 	"github.com/heroku/busl/util"
 )
 
-func setup() util.UUID {
+func setup() string {
 	registrar := NewRedisRegistrar()
 	uuid, _ := util.NewUUID()
 	registrar.Register(uuid)

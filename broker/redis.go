@@ -73,10 +73,6 @@ func (c channel) wildcardId() string {
 	return string(c) + "*"
 }
 
-func (c channel) uuid() util.UUID {
-	return util.UUID(c)
-}
-
 func (c channel) doneId() string {
 	return string(c) + "done"
 }
@@ -93,7 +89,7 @@ func NewRedisRegistrar() *RedisRegistrar {
 	return registrar
 }
 
-func (rr *RedisRegistrar) Register(channel util.UUID) (err error) {
+func (rr *RedisRegistrar) Register(channel string) (err error) {
 	conn := redisPool.Get()
 	defer conn.Close()
 
@@ -105,15 +101,23 @@ func (rr *RedisRegistrar) Register(channel util.UUID) (err error) {
 	return
 }
 
-func (rr *RedisRegistrar) IsRegistered(channel util.UUID) (registered bool) {
+func (rr *RedisRegistrar) IsRegistered(channel string) (registered bool) {
 	conn := redisPool.Get()
 	defer conn.Close()
 
-	result, err := redis.Int64(conn.Do("EXISTS", channel))
+	exists, err := redis.Bool(conn.Do("EXISTS", channel))
 	if err != nil {
 		util.CountWithData("RedisRegistrar.IsRegistered.error", 1, "error=%s", err)
 		return false
 	}
 
-	return result == 1
+	return exists
+}
+
+func Get(key string) ([]byte, error) {
+	conn := redisPool.Get()
+	defer conn.Close()
+
+	channel := channel(key)
+	return redis.Bytes(conn.Do("GET", channel.id()))
 }

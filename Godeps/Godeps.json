@@ -11,16 +11,20 @@
 			"Rev": "5280e250f2795914acbeb2bf3b55dd5a2d1fba52"
 		},
 		{
-			"ImportPath": "github.com/cyberdelia/pat",
-			"Rev": "ea31bfdada81cbe4019f605ed6e2887b7d39eaea"
-		},
-		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
 			"Rev": "535138d7bcd717d6531c701ef5933d98b1866257"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
 			"Rev": "535138d7bcd717d6531c701ef5933d98b1866257"
+		},
+		{
+			"ImportPath": "github.com/gorilla/context",
+			"Rev": "215affda49addc4c8ef7e2534915df2c8c35c6cd"
+		},
+		{
+			"ImportPath": "github.com/gorilla/mux",
+			"Rev": "8096f47503459bcc74d1f4c487b7e6e42e5746b5"
 		},
 		{
 			"ImportPath": "github.com/heroku/authenticater",

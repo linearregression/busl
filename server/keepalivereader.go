@@ -14,6 +14,7 @@ type payload struct {
 }
 
 type keepAliveReader struct {
+	r        io.Reader
 	packet   []byte        // typically a null byte
 	interval time.Duration // duration before sending an ack
 	ch       chan *payload // where all the original reads go to
@@ -21,13 +22,13 @@ type keepAliveReader struct {
 	eof      bool          // marked true when we hit EOF
 }
 
-func NewKeepAliveReader(reader io.Reader, packet []byte, interval time.Duration, done <-chan bool) io.Reader {
+func newKeepAliveReader(r io.Reader, packet []byte, interval time.Duration, done <-chan bool) io.ReadCloser {
 	ch := make(chan *payload, 100)
 
 	go func() {
 		for {
 			payload := &payload{p: make([]byte, 1024*32)}
-			payload.n, payload.err = reader.Read(payload.p)
+			payload.n, payload.err = r.Read(payload.p)
 			ch <- payload
 
 			if payload.err != nil {
@@ -36,7 +37,7 @@ func NewKeepAliveReader(reader io.Reader, packet []byte, interval time.Duration,
 		}
 	}()
 
-	return &keepAliveReader{ch: ch, done: done, packet: packet, interval: interval}
+	return &keepAliveReader{r: r, ch: ch, done: done, packet: packet, interval: interval}
 }
 
 func (r *keepAliveReader) Read(p []byte) (int, error) {
@@ -68,4 +69,11 @@ func (r *keepAliveReader) Read(p []byte) (int, error) {
 		r.eof = true
 		return 0, io.EOF
 	}
+}
+
+func (r *keepAliveReader) Close() error {
+	if closer, ok := r.r.(io.Closer); ok {
+		return closer.Close()
+	}
+	return nil
 }

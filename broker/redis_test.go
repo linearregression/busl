@@ -15,12 +15,12 @@ func Test(t *testing.T) { TestingT(t) }
 
 type RegistrarSuite struct {
 	registrar Registrar
-	uuid      u.UUID
+	uuid      string
 }
 
 type BrokerSuite struct {
 	registrar Registrar
-	uuid      u.UUID
+	uuid      string
 	writer    io.WriteCloser
 	reader    io.ReadCloser
 }
@@ -143,7 +143,6 @@ func (s *BrokerSuite) TestRedisSubscribeConcurrent(c *C) {
 func (s *BrokerSuite) TestRedisReadFromClosed(c *C) {
 	p := make([]byte, 10)
 
-	// this read sets replayed = true
 	s.reader.Read(p)
 	s.writer.Close()
 

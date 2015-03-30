@@ -4,15 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/braintree/manners"
-	"github.com/heroku/busl/Godeps/_workspace/src/github.com/cyberdelia/pat"
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/gorilla/mux"
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/rollbar"
 	"github.com/heroku/busl/broker"
-	"github.com/heroku/busl/sse"
 	"github.com/heroku/busl/util"
 )
 
@@ -45,19 +43,30 @@ func mkstream(w http.ResponseWriter, _ *http.Request) {
 	io.WriteString(w, string(uuid))
 }
 
+func put(w http.ResponseWriter, r *http.Request) {
+	registrar := broker.NewRedisRegistrar()
+
+	if err := registrar.Register(key(r)); err != nil {
+		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
+		rollbar.Error(rollbar.ERR, fmt.Errorf("unable to register stream: %#v", err))
+		util.CountWithData("put.create.fail", 1, "error=%s", err)
+		return
+	}
+	util.Count("put.create.success")
+	w.WriteHeader(http.StatusCreated)
+}
+
 func health(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK")
 }
 
 func pub(w http.ResponseWriter, r *http.Request) {
-	uuid := util.UUID(r.URL.Query().Get(":uuid"))
-
 	if !util.StringSliceUtil(r.TransferEncoding).Contains("chunked") {
 		http.Error(w, "A chunked Transfer-Encoding header is required.", http.StatusBadRequest)
 		return
 	}
 
-	writer, err := broker.NewWriter(uuid)
+	writer, err := broker.NewWriter(key(r))
 	if err != nil {
 		handleError(w, r, err)
 		return
@@ -78,73 +87,45 @@ func pub(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%#v", err)
 		http.Error(w, "Unhandled error, please try again.", http.StatusInternalServerError)
 		rollbar.Error(rollbar.ERR, fmt.Errorf("unhandled error: %#v", err))
+		return
 	}
+
+	// Asynchronously upload the output to our defined storage backend.
+	go storeOutput(key(r), requestURI(r))
 }
 
 func sub(w http.ResponseWriter, r *http.Request) {
-	f, ok := w.(http.Flusher)
-
-	if !ok {
+	if _, ok := w.(http.Flusher); !ok {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
 
-	uuid := util.UUID(r.URL.Query().Get(":uuid"))
-
-	rd, err := broker.NewReader(uuid)
+	rd, err := newReader(w, r)
+	if rd != nil {
+		defer rd.Close()
+	}
 	if err != nil {
 		handleError(w, r, err)
 		return
 	}
-	defer rd.Close()
-
-	// Get the offset from Last-Event-ID: or Range:
-	offset := offset(r)
-	if offset > 0 {
-		rd.(io.Seeker).Seek(int64(offset), 0)
-	}
-
-	// For default requests, we use a null byte for sending
-	// the keepalive ack.
-	ack := util.GetNullByte()
-
-	if r.Header.Get("Accept") == "text/event-stream" {
-
-		// As indicated in the w3 spec[1] an SSE stream
-		// that's already done should return a 204
-		// [1]: http://www.w3.org/TR/2012/WD-eventsource-20120426/
-		if broker.ReaderDone(rd) {
-			w.WriteHeader(http.StatusNoContent)
-			f.Flush()
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-
-		encoder := sse.NewEncoder(rd)
-		encoder.(io.Seeker).Seek(int64(offset), 0)
-
-		rd = ioutil.NopCloser(encoder)
-
-		// For SSE, we change the ack to a :keepalive
-		ack = []byte(":keepalive\n")
-	}
-
-	done := w.(http.CloseNotifier).CloseNotify()
-	reader := NewKeepAliveReader(rd, ack, *util.HeartbeatDuration, done)
-	io.Copy(NewWriteFlusher(w), reader)
+	io.Copy(newWriteFlusher(w), rd)
 }
 
 func app() http.Handler {
-	p := pat.New()
+	r := mux.NewRouter()
 
-	p.GetFunc("/health", addDefaultHeaders(health))
-	p.PostFunc("/streams", auth(addDefaultHeaders(mkstream)))
-	p.PostFunc("/streams/:uuid", addDefaultHeaders(pub))
-	p.GetFunc("/streams/:uuid", addDefaultHeaders(sub))
+	r.HandleFunc("/health", addDefaultHeaders(health))
 
-	return logRequest(enforceHTTPS(p.ServeHTTP))
+	// Legacy endpoint for creating the uuid `key` for you.
+	r.HandleFunc("/streams", auth(addDefaultHeaders(mkstream)))
+
+	// New `key` design for allowing any kind of id to be decided
+	// by the caller (in this case, it mirrors what we have in S3).
+	r.HandleFunc("/streams/{key:.+}", addDefaultHeaders(sub)).Methods("GET")
+	r.HandleFunc("/streams/{key:.+}", addDefaultHeaders(pub)).Methods("POST")
+	r.HandleFunc("/streams/{key:.+}", auth(addDefaultHeaders(put))).Methods("PUT")
+
+	return logRequest(enforceHTTPS(r.ServeHTTP))
 }
 
 func Start(port string, shutdown <-chan struct{}) {
