@@ -19,7 +19,7 @@ type HttpServerSuite struct{}
 
 var _ = Suite(&HttpServerSuite{})
 var sf = fmt.Sprintf
-var baseURL = *util.StorageBaseUrl
+var baseURL = *util.StorageBaseURL
 
 func newRequest(method, url, body string) *http.Request {
 	return newRequestFromReader(method, url, bytes.NewBufferString(body))
@@ -149,9 +149,9 @@ func (s *HttpServerSuite) TestSubGoneWithBackend(c *C) {
 	storage, get, _ := fileServer(uuid)
 	defer storage.Close()
 
-	*util.StorageBaseUrl = storage.URL
+	*util.StorageBaseURL = storage.URL
 	defer func() {
-		*util.StorageBaseUrl = baseURL
+		*util.StorageBaseURL = baseURL
 	}()
 
 	server := httptest.NewServer(app())
@@ -174,9 +174,9 @@ func (s *HttpServerSuite) TestPutWithBackend(c *C) {
 	storage, _, put := fileServer(uuid)
 	defer storage.Close()
 
-	*util.StorageBaseUrl = storage.URL
+	*util.StorageBaseURL = storage.URL
 	defer func() {
-		*util.StorageBaseUrl = baseURL
+		*util.StorageBaseURL = baseURL
 	}()
 
 	server := httptest.NewServer(app())

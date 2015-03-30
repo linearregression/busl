@@ -12,7 +12,7 @@ import (
 	"github.com/heroku/busl/util"
 )
 
-var baseURL = *util.StorageBaseUrl
+var baseURL = *util.StorageBaseURL
 
 func setup() (string, string) {
 	put, err := url.Parse(os.Getenv("TEST_PUT_URL"))
@@ -27,9 +27,9 @@ func setup() (string, string) {
 }
 
 func ExampleURLResolution() {
-	*util.StorageBaseUrl = "https://bucket.s3.amazonaws.com"
+	*util.StorageBaseURL = "https://bucket.s3.amazonaws.com"
 	defer func() {
-		*util.StorageBaseUrl = ""
+		*util.StorageBaseURL = ""
 	}()
 
 	fmt.Println(absoluteURL("/1/2/3?foo=bar"))
@@ -40,10 +40,10 @@ func ExampleURLResolution() {
 	// https://bucket.s3.amazonaws.com/1/2/3?foo=bar <nil>
 }
 
-func ExampleEmptyStorageBaseUrl() {
-	*util.StorageBaseUrl = ""
+func ExampleEmptyStorageBaseURL() {
+	*util.StorageBaseURL = ""
 	defer func() {
-		*util.StorageBaseUrl = baseURL
+		*util.StorageBaseURL = baseURL
 	}()
 	fmt.Println(absoluteURL("/1/2/3?foo=bar"))
 
@@ -52,9 +52,9 @@ func ExampleEmptyStorageBaseUrl() {
 }
 
 func TestPutConnRefused(t *testing.T) {
-	*util.StorageBaseUrl = "http://localhost:0"
+	*util.StorageBaseURL = "http://localhost:0"
 	defer func() {
-		*util.StorageBaseUrl = baseURL
+		*util.StorageBaseURL = baseURL
 	}()
 
 	err := Put("1/2/3", nil)
@@ -65,9 +65,9 @@ func TestPutConnRefused(t *testing.T) {
 }
 
 func TestGetConnRefused(t *testing.T) {
-	*util.StorageBaseUrl = "http://localhost:0"
+	*util.StorageBaseURL = "http://localhost:0"
 	defer func() {
-		*util.StorageBaseUrl = baseURL
+		*util.StorageBaseURL = baseURL
 	}()
 
 	_, err := Get("1/2/3", 0)
@@ -78,9 +78,9 @@ func TestGetConnRefused(t *testing.T) {
 }
 
 func TestPutWithoutBaseURL(t *testing.T) {
-	*util.StorageBaseUrl = ""
+	*util.StorageBaseURL = ""
 	defer func() {
-		*util.StorageBaseUrl = baseURL
+		*util.StorageBaseURL = baseURL
 	}()
 
 	err := Put("1/2/3", nil)
@@ -91,9 +91,9 @@ func TestPutWithoutBaseURL(t *testing.T) {
 }
 
 func TestGetWithoutBaseURL(t *testing.T) {
-	*util.StorageBaseUrl = ""
+	*util.StorageBaseURL = ""
 	defer func() {
-		*util.StorageBaseUrl = baseURL
+		*util.StorageBaseURL = baseURL
 	}()
 
 	_, err := Get("1/2/3", 0)

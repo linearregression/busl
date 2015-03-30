@@ -17,7 +17,7 @@ var (
 	HttpWriteTimeout   = flag.Duration("httpWriteTimeout", time.Hour, "Timeout for HTTP request writing")
 	RollbarEnvironment = flag.String("rollbarEnvironment", os.Getenv("ROLLBAR_ENVIRONMENT"), "Rollbar Enviornment for this application (development/staging/production).")
 	RollbarToken       = flag.String("rollbarToken", os.Getenv("ROLLBAR_TOKEN"), "Rollbar Token for sending issues to Rollbar.")
-	StorageBaseUrl     = flag.String("storageBaseURL", os.Getenv("STORAGE_BASE_URL"), "Optional persistent blob storage (i.e. S3)")
+	StorageBaseURL     = flag.String("storageBaseURL", os.Getenv("STORAGE_BASE_URL"), "Optional persistent blob storage (i.e. S3)")
 )
 
 func init() {

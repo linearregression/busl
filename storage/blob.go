@@ -169,10 +169,10 @@ func absoluteURL(requestURI string) (*url.URL, error) {
 }
 
 func baseURI() (*url.URL, error) {
-	if *util.StorageBaseUrl == "" {
+	if *util.StorageBaseURL == "" {
 		return nil, ErrNoStorage
 	}
-	return url.Parse(*util.StorageBaseUrl)
+	return url.Parse(*util.StorageBaseURL)
 }
 
 // Keep concept of requestURI similar to S3 without a slash prefix.
