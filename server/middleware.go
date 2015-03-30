@@ -107,7 +107,13 @@ func offset(r *http.Request) int64 {
 // Returns:
 //   1/2/3?foo=bar
 func requestURI(r *http.Request) string {
-	return key(r) + "?" + r.URL.RawQuery
+	res := key(r)
+
+	if r.URL.RawQuery != "" {
+		res += "?" + r.URL.RawQuery
+	}
+
+	return res
 }
 
 func key(r *http.Request) string {
