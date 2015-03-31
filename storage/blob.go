@@ -153,8 +153,8 @@ func process(req *http.Request) (*http.Response, error) {
 			err = ErrNotFound
 		case res.StatusCode >= 500:
 			err = Err5xx
-		case res.StatusCode != 200:
-			err = fmt.Errorf("Expected 200, got %d", res.StatusCode)
+		case res.StatusCode/100 != 2:
+			err = fmt.Errorf("Expected 2xx, got %d", res.StatusCode)
 		}
 	}
 	return res, err
