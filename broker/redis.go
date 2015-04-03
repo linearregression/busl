@@ -66,7 +66,7 @@ func newPool(server *url.URL) *redis.Pool {
 type channel string
 
 func (c channel) id() string {
-	return string(c)
+	return string(c) + ":id"
 }
 
 func (c channel) wildcardId() string {
@@ -74,11 +74,11 @@ func (c channel) wildcardId() string {
 }
 
 func (c channel) doneId() string {
-	return string(c) + "done"
+	return string(c) + ":done"
 }
 
 func (c channel) killId() string {
-	return string(c) + "kill"
+	return string(c) + ":kill"
 }
 
 type RedisRegistrar struct{}
