@@ -165,6 +165,7 @@ func (r *reader) fetch() ([]byte, error) {
 	conn.Send("MULTI")
 	conn.Send("GETRANGE", r.channel.id(), r.offset, -1)
 	conn.Send("EXISTS", r.channel.doneId())
+	conn.Send("EXPIRE", r.channel.id(), redisChannelExpire)
 
 	list, err := redis.Values(conn.Do("EXEC"))
 	data, err := redis.Bytes(list[0], err)
