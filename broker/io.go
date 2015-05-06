@@ -223,3 +223,17 @@ func NoContent(rd io.Reader, offset int64) bool {
 
 	return offset > (strlen - 1)
 }
+
+func RenewExpiry(rd io.Reader) {
+	r, ok := rd.(*reader)
+	if !ok {
+		return
+	}
+
+	conn := redisPool.Get()
+	defer conn.Close()
+
+	conn.Send("MULTI")
+	conn.Send("EXPIRE", r.channel.id(), redisChannelExpire)
+	conn.Do("EXEC")
+}

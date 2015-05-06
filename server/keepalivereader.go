@@ -4,6 +4,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/util"
 )
 
@@ -62,6 +63,7 @@ func (r *keepAliveReader) Read(p []byte) (int, error) {
 
 	case <-timer.C:
 		util.Count("server.sub.keepAlive")
+		broker.RenewExpiry(r.r)
 		return copy(p, r.packet), nil
 
 	case <-r.done:

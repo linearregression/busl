@@ -89,11 +89,13 @@ func NewRedisRegistrar() *RedisRegistrar {
 	return registrar
 }
 
-func (rr *RedisRegistrar) Register(channel string) (err error) {
+func (rr *RedisRegistrar) Register(channelName string) (err error) {
 	conn := redisPool.Get()
 	defer conn.Close()
 
-	_, err = conn.Do("SETEX", channel, redisChannelExpire, make([]byte, 0))
+	channel := channel(channelName)
+
+	_, err = conn.Do("SETEX", channel.id(), redisChannelExpire, make([]byte, 0))
 	if err != nil {
 		util.CountWithData("RedisRegistrar.Register.error", 1, "error=%s", err)
 		return
@@ -101,11 +103,13 @@ func (rr *RedisRegistrar) Register(channel string) (err error) {
 	return
 }
 
-func (rr *RedisRegistrar) IsRegistered(channel string) (registered bool) {
+func (rr *RedisRegistrar) IsRegistered(channelName string) (registered bool) {
 	conn := redisPool.Get()
 	defer conn.Close()
 
-	exists, err := redis.Bool(conn.Do("EXISTS", channel))
+	channel := channel(channelName)
+
+	exists, err := redis.Bool(conn.Do("EXISTS", channel.id()))
 	if err != nil {
 		util.CountWithData("RedisRegistrar.IsRegistered.error", 1, "error=%s", err)
 		return false
