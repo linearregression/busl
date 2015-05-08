@@ -2,13 +2,14 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
 	"syscall"
+
+	flag "github.com/heroku/busl/Godeps/_workspace/src/github.com/ogier/pflag"
 )
 
 // TODO: Use net/http when this issue has been fixed:
@@ -63,30 +64,29 @@ func exitStatus(err error) int {
 }
 
 func main() {
-	url := flag.String("url", "", "busl url")
-	insecure := flag.Bool("insecure", false, "allows insecure SSL connections")
+	insecure := flag.BoolP("insecure", "k", false, "allows insecure SSL connections")
 	timeout := flag.String("connect-timeout", "5", "max number of seconds to connect to busl URL")
 
-	flag.Parse()
-
-	if len(flag.Args()) == 0 {
-		flag.PrintDefaults()
+	if flag.Parse(); len(flag.Args()) < 2 {
+		println(usage)
 		os.Exit(1)
 	}
 
 	reader, writer := io.Pipe()
-
 	uploaded := make(chan struct{})
 
+	url := flag.Arg(0)
+	args := flag.Args()[1:]
+
 	go func() {
-		if err := stream(*url, reader, *insecure, *timeout); err != nil {
+		if err := stream(url, reader, *insecure, *timeout); err != nil {
 			// Prevent writes from blocking.
 			io.Copy(ioutil.Discard, reader)
 		}
 		close(uploaded)
 	}()
 
-	err := run(flag.Args(), writer)
+	err := run(args, writer)
 
 	// Wait for http request to complete
 	<-uploaded
@@ -95,3 +95,5 @@ func main() {
 		os.Exit(exitStatus(err))
 	}
 }
+
+var usage = "Usage: busltee <url> [-k|--insecure] [--connect-timeout N] -- <command>"
