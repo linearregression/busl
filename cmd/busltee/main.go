@@ -4,18 +4,89 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"time"
 
 	flag "github.com/heroku/busl/Godeps/_workspace/src/github.com/ogier/pflag"
 )
 
+const usage string = "Usage: busltee <url> [-k|--insecure] [--connect-timeout N] -- <command>"
+
+type config struct {
+	insecure  bool
+	timeout   string
+	logPrefix string
+	logFile   string
+}
+
+func main() {
+	conf := &config{}
+
+	flag.BoolVarP(&conf.insecure, "insecure", "k", false, "allows insecure SSL connections")
+	flag.StringVar(&conf.timeout, "connect-timeout", "5", "max number of seconds to connect to busl URL")
+	flag.StringVar(&conf.logPrefix, "log-prefix", "", "log prefix")
+	flag.StringVar(&conf.logFile, "log-file", "", "log file")
+
+	if flag.Parse(); len(flag.Args()) < 2 {
+		log.Fatal(usage)
+	}
+
+	out := getLogOutput(conf.logFile)
+	log.SetPrefix(conf.logPrefix + " ")
+	log.SetOutput(out)
+	log.SetFlags(0)
+	if f, ok := out.(io.Closer); ok {
+		defer f.Close()
+	}
+
+	url := flag.Arg(0)
+	args := flag.Args()[1:]
+
+	err := busltee(conf, url, args)
+	if err != nil {
+		log.Printf("busltee.main.error count#busltee.main.error=1 error=%v", err.Error())
+		os.Exit(exitStatus(err))
+	}
+}
+
+func monitor(subject string, ts time.Time) {
+	log.Printf("%s.time time=%f", subject, time.Now().Sub(ts).Seconds())
+}
+
+func busltee(conf *config, url string, args []string) error {
+	defer monitor("busltee.busltee", time.Now())
+
+	reader, writer := io.Pipe()
+	uploaded := make(chan struct{})
+
+	go func() {
+		if err := stream(url, reader, conf.insecure, conf.timeout); err != nil {
+			log.Printf("busltee.stream.error count#busltee.stream.error=1 error=%v", err.Error())
+			// Prevent writes from blocking.
+			io.Copy(ioutil.Discard, reader)
+		} else {
+			log.Printf("busltee.stream.success count#busltee.stream.success=1")
+		}
+		close(uploaded)
+	}()
+
+	err := run(args, writer, writer)
+	<-uploaded
+
+	return err
+}
+
 // TODO: Use net/http when this issue has been fixed:
 // @see https://github.com/golang/go/issues/6574
 func stream(url string, stdin io.Reader, insecure bool, timeout string) error {
+	defer monitor("busltee.stream", time.Now())
+
 	if url == "" {
+		log.Printf("count#busltee.stream.missingurl")
 		return errors.New("Missing URL")
 	}
 
@@ -36,12 +107,14 @@ func stream(url string, stdin io.Reader, insecure bool, timeout string) error {
 	return cmd.Run()
 }
 
-func run(args []string, writer io.WriteCloser) error {
-	defer writer.Close()
+func run(args []string, stdout, stderr io.WriteCloser) error {
+	defer stdout.Close()
+	defer stderr.Close()
+	defer monitor("busltee.run", time.Now())
 
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = io.MultiWriter(writer, os.Stdout)
-	cmd.Stderr = io.MultiWriter(writer, os.Stderr)
+	cmd.Stdout = io.MultiWriter(stdout, os.Stdout)
+	cmd.Stderr = io.MultiWriter(stderr, os.Stderr)
 
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc)
@@ -63,37 +136,13 @@ func exitStatus(err error) int {
 	return 0
 }
 
-func main() {
-	insecure := flag.BoolP("insecure", "k", false, "allows insecure SSL connections")
-	timeout := flag.String("connect-timeout", "5", "max number of seconds to connect to busl URL")
-
-	if flag.Parse(); len(flag.Args()) < 2 {
-		println(usage)
-		os.Exit(1)
+func getLogOutput(logFile string) io.Writer {
+	if logFile == "" {
+		return ioutil.Discard
 	}
-
-	reader, writer := io.Pipe()
-	uploaded := make(chan struct{})
-
-	url := flag.Arg(0)
-	args := flag.Args()[1:]
-
-	go func() {
-		if err := stream(url, reader, *insecure, *timeout); err != nil {
-			// Prevent writes from blocking.
-			io.Copy(ioutil.Discard, reader)
-		}
-		close(uploaded)
-	}()
-
-	err := run(args, writer)
-
-	// Wait for http request to complete
-	<-uploaded
-
-	if err != nil {
-		os.Exit(exitStatus(err))
+	if file, err := os.OpenFile(logFile, os.O_RDWR|os.O_APPEND, 0660); err != nil {
+		return ioutil.Discard
+	} else {
+		return file
 	}
 }
-
-var usage = "Usage: busltee <url> [-k|--insecure] [--connect-timeout N] -- <command>"
