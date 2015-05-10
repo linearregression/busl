@@ -19,6 +19,7 @@ const usage string = "Usage: busltee <url> [-k|--insecure] [--connect-timeout N]
 type config struct {
 	insecure  bool
 	timeout   string
+	retry     int
 	logPrefix string
 	logFile   string
 }
@@ -27,7 +28,8 @@ func main() {
 	conf := &config{}
 
 	flag.BoolVarP(&conf.insecure, "insecure", "k", false, "allows insecure SSL connections")
-	flag.StringVar(&conf.timeout, "connect-timeout", "5", "max number of seconds to connect to busl URL")
+	flag.IntVar(&conf.retry, "retry", 5, "max retries for connect timeout errors")
+	flag.StringVar(&conf.timeout, "connect-timeout", "1", "max number of seconds to connect to busl URL")
 	flag.StringVar(&conf.logPrefix, "log-prefix", "", "log prefix")
 	flag.StringVar(&conf.logFile, "log-file", "", "log file")
 
@@ -64,7 +66,7 @@ func busltee(conf *config, url string, args []string) error {
 	uploaded := make(chan struct{})
 
 	go func() {
-		if err := stream(url, reader, conf.insecure, conf.timeout); err != nil {
+		if err := stream(conf.retry, url, reader, conf.insecure, conf.timeout); err != nil {
 			log.Printf("busltee.stream.error count#busltee.stream.error=1 error=%v", err.Error())
 			// Prevent writes from blocking.
 			io.Copy(ioutil.Discard, reader)
@@ -80,9 +82,23 @@ func busltee(conf *config, url string, args []string) error {
 	return err
 }
 
+func stream(retry int, url string, stdin io.Reader, insecure bool, timeout string) (err error) {
+	for retries := retry; retries > 0; retries-- {
+		err = streamNoRetry(url, stdin, insecure, timeout)
+
+		// TODO: replace exit code `28` with the
+		// necessary check when we switch to net/http
+		if err == nil || exitStatus(err) != 28 {
+			return err
+		}
+		log.Printf("count#busltee.stream.retry")
+	}
+	return err
+}
+
 // TODO: Use net/http when this issue has been fixed:
 // @see https://github.com/golang/go/issues/6574
-func stream(url string, stdin io.Reader, insecure bool, timeout string) error {
+func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout string) error {
 	defer monitor("busltee.stream", time.Now())
 
 	if url == "" {
