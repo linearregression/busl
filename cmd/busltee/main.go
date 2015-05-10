@@ -136,7 +136,11 @@ func run(args []string, stdout, stderr io.WriteCloser) error {
 	signal.Notify(sigc)
 	go func() {
 		s := <-sigc
-		cmd.Process.Signal(s)
+		if cmd.Process == nil {
+			log.Printf("count#busltee.run.error error=cmd.Process is nil")
+		} else {
+			cmd.Process.Signal(s)
+		}
 	}()
 
 	return cmd.Run()
