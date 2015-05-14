@@ -1,10 +1,13 @@
 package main
 
 import (
+	"crypto/tls"
 	"errors"
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -18,7 +21,7 @@ const usage string = "Usage: busltee <url> [-k|--insecure] [--connect-timeout N]
 
 type config struct {
 	insecure  bool
-	timeout   string
+	timeout   float64
 	retry     int
 	logPrefix string
 	logFile   string
@@ -29,7 +32,7 @@ func main() {
 
 	flag.BoolVarP(&conf.insecure, "insecure", "k", false, "allows insecure SSL connections")
 	flag.IntVar(&conf.retry, "retry", 5, "max retries for connect timeout errors")
-	flag.StringVar(&conf.timeout, "connect-timeout", "1", "max number of seconds to connect to busl URL")
+	flag.Float64Var(&conf.timeout, "connect-timeout", 1, "max number of seconds to connect to busl URL")
 	flag.StringVar(&conf.logPrefix, "log-prefix", "", "log prefix")
 	flag.StringVar(&conf.logFile, "log-file", "", "log file")
 
@@ -82,13 +85,11 @@ func busltee(conf *config, url string, args []string) error {
 	return err
 }
 
-func stream(retry int, url string, stdin io.Reader, insecure bool, timeout string) (err error) {
+func stream(retry int, url string, stdin io.Reader, insecure bool, timeout float64) (err error) {
 	for retries := retry; retries > 0; retries-- {
 		err = streamNoRetry(url, stdin, insecure, timeout)
 
-		// TODO: replace exit code `28` with the
-		// necessary check when we switch to net/http
-		if err == nil || exitStatus(err) != 28 {
+		if err == nil || !isTimeout(err) {
 			return err
 		}
 		log.Printf("count#busltee.stream.retry")
@@ -96,9 +97,7 @@ func stream(retry int, url string, stdin io.Reader, insecure bool, timeout strin
 	return err
 }
 
-// TODO: Use net/http when this issue has been fixed:
-// @see https://github.com/golang/go/issues/6574
-func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout string) error {
+func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout float64) error {
 	defer monitor("busltee.stream", time.Now())
 
 	if url == "" {
@@ -106,21 +105,27 @@ func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout string) e
 		return errors.New("Missing URL")
 	}
 
-	args := []string{
-		"--connect-timeout", timeout,
-		"-T", "-",
-		"-H", "Transfer-Encoding: chunked",
-		"-XPOST", url,
+	tr := &http.Transport{
+		Dial: (&net.Dialer{
+			Timeout:   time.Duration(timeout) * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
 	}
 
 	if insecure {
-		args = append(args, "-k")
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
-	cmd := exec.Command("curl", args...)
-	cmd.Stdin = stdin
+	req, err := http.NewRequest("POST", url, ioutil.NopCloser(stdin))
+	if err != nil {
+		return err
+	}
 
-	return cmd.Run()
+	res, err := tr.RoundTrip(req)
+	if res != nil {
+		defer res.Body.Close()
+	}
+	return err
 }
 
 func run(args []string, stdout, stderr io.WriteCloser) error {
@@ -144,6 +149,11 @@ func run(args []string, stdout, stderr io.WriteCloser) error {
 	}()
 
 	return cmd.Run()
+}
+
+func isTimeout(err error) bool {
+	e, ok := err.(net.Error)
+	return ok && e.Timeout()
 }
 
 func exitStatus(err error) int {
