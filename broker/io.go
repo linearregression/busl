@@ -143,7 +143,7 @@ func (r *reader) replay(p []byte) (n int, err error) {
 func (r *reader) read(msg redis.PMessage, p []byte) (n int, err error) {
 	var buf []byte
 
-	if msg.Channel == r.channel.id() {
+	if msg.Channel == r.channel.killId() || msg.Channel == r.channel.id() {
 		buf, err = r.fetch()
 
 		if n = len(buf); n > 0 {
