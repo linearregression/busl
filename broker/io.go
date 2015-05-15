@@ -55,6 +55,7 @@ type reader struct {
 	replayed bool
 	closed   bool
 	mutex    *sync.Mutex
+	buffered bool
 }
 
 func NewReader(key string) (io.ReadCloser, error) {
@@ -119,15 +120,17 @@ func (r *reader) replay(p []byte) (n int, err error) {
 	var buf []byte
 
 	if !r.replayed {
-		r.replayed = true
-
-		buf, err = r.fetch()
+		buf, err = r.fetch(len(p))
 		n = len(buf)
 
 		if n > 0 {
 			r.offset += int64(n)
 			copy(p, buf)
 		}
+
+		// Only mark as fully replayed if
+		// we're no longer in buffered state.
+		r.replayed = (!r.buffered || err == io.EOF)
 
 		if err == io.EOF {
 			util.Count("RedisBroker.replay.channelDone")
@@ -140,8 +143,8 @@ func (r *reader) replay(p []byte) (n int, err error) {
 func (r *reader) read(msg redis.PMessage, p []byte) (n int, err error) {
 	var buf []byte
 
-	if msg.Channel == r.channel.id() {
-		buf, err = r.fetch()
+	if msg.Channel == r.channel.killId() || msg.Channel == r.channel.id() {
+		buf, err = r.fetch(len(p))
 
 		if n = len(buf); n > 0 {
 			copy(p, buf)
@@ -158,20 +161,24 @@ func (r *reader) read(msg redis.PMessage, p []byte) (n int, err error) {
 	return n, err
 }
 
-func (r *reader) fetch() ([]byte, error) {
+func (r *reader) fetch(length int) ([]byte, error) {
 	conn := redisPool.Get()
 	defer conn.Close()
 
+	start, end := r.offset, r.offset+int64(length)
+
 	conn.Send("MULTI")
-	conn.Send("GETRANGE", r.channel.id(), r.offset, -1)
+	conn.Send("GETRANGE", r.channel.id(), start, end-1)
+	conn.Send("STRLEN", r.channel.id())
 	conn.Send("EXISTS", r.channel.doneId())
 	conn.Send("EXPIRE", r.channel.id(), redisChannelExpire)
 
 	list, err := redis.Values(conn.Do("EXEC"))
 	data, err := redis.Bytes(list[0], err)
-	done, err := redis.Bool(list[1], err)
+	size, err := redis.Int64(list[1], err)
+	done, err := redis.Bool(list[2], err)
 
-	if done {
+	if r.buffered = end < size; !r.buffered && done {
 		err = io.EOF
 	}
 

@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -137,4 +138,34 @@ func ExampleHalfReplayHalfSubscribed() {
 
 	//Output:
 	// busl hello world
+}
+
+func ExampleOverflowingBuffer() {
+	uuid := setup()
+
+	w, _ := NewWriter(uuid)
+	w.Write(bytes.Repeat([]byte("0"), 4096))
+	w.Write(bytes.Repeat([]byte("1"), 4096))
+	w.Write(bytes.Repeat([]byte("2"), 4096))
+	w.Write(bytes.Repeat([]byte("3"), 4096))
+	w.Write(bytes.Repeat([]byte("4"), 4096))
+	w.Write(bytes.Repeat([]byte("5"), 4096))
+	w.Write(bytes.Repeat([]byte("6"), 4096))
+	w.Write(bytes.Repeat([]byte("7"), 4096))
+	w.Write(bytes.Repeat([]byte("A"), 1))
+
+	r, _ := NewReader(uuid)
+	defer r.(io.Closer).Close()
+
+	done := make(chan struct{})
+	go func() {
+		n, _ := io.Copy(ioutil.Discard, r)
+		fmt.Printf("%d", n)
+		close(done)
+	}()
+	w.Close()
+	<-done
+
+	//Output:
+	// 32769
 }
