@@ -83,6 +83,7 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 	data := [][]byte{
 		[]byte{'h', 'e', 'l', 'l', 'o'},
 		[]byte{0x1f, 0x8b, 0x08, 0x00, 0x3f, 0x6b, 0xe1, 0x53, 0x00, 0x03, 0xed, 0xce, 0xb1, 0x0a, 0xc2, 0x30},
+		bytes.Repeat([]byte{'0'}, 32769),
 	}
 
 	for _, expected := range data {
@@ -123,6 +124,17 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 		c.Assert(err, IsNil)
 
 		<-done
+
+		// Read the whole response after the publisher has
+		// completed. The mechanics of this is different in that
+		// most of the content will be replayed instead of received
+		// in chunks as they arrive.
+		resp, err = http.Get(server.URL + "/streams/" + uuid)
+		defer resp.Body.Close()
+		c.Assert(err, IsNil)
+
+		body, _ = ioutil.ReadAll(resp.Body)
+		c.Assert(body, DeepEquals, expected)
 	}
 }
 
