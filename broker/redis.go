@@ -70,7 +70,7 @@ func (c channel) id() string {
 }
 
 func (c channel) wildcardId() string {
-	return string(c) + "*"
+	return string(c) + ":*"
 }
 
 func (c channel) doneId() string {
