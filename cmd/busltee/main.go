@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -37,7 +38,8 @@ func main() {
 	flag.StringVar(&conf.logFile, "log-file", "", "log file")
 
 	if flag.Parse(); len(flag.Args()) < 2 {
-		log.Fatal(usage)
+		fmt.Println(usage)
+		os.Exit(1)
 	}
 
 	out := getLogOutput(conf.logFile)
