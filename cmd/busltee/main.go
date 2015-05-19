@@ -93,9 +93,7 @@ func busltee(conf *config, url string, args []string) error {
 
 func stream(retry int, url string, stdin io.Reader, insecure bool, timeout float64) (err error) {
 	for retries := retry; retries > 0; retries-- {
-		err = streamNoRetry(url, stdin, insecure, timeout)
-
-		if err == nil || !isTimeout(err) {
+		if err = streamNoRetry(url, stdin, insecure, timeout); !isTimeout(err) {
 			return err
 		}
 		log.Printf("count#busltee.stream.retry")
