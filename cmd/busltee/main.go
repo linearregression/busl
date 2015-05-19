@@ -31,9 +31,12 @@ type config struct {
 func main() {
 	conf := &config{}
 
+	// Connection related flags
 	flag.BoolVarP(&conf.insecure, "insecure", "k", false, "allows insecure SSL connections")
 	flag.IntVar(&conf.retry, "retry", 5, "max retries for connect timeout errors")
 	flag.Float64Var(&conf.timeout, "connect-timeout", 1, "max number of seconds to connect to busl URL")
+
+	// Logging related flags
 	flag.StringVar(&conf.logPrefix, "log-prefix", "", "log prefix")
 	flag.StringVar(&conf.logFile, "log-file", "", "log file")
 
@@ -42,6 +45,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Setup logger
 	out := getLogOutput(conf.logFile)
 	log.SetPrefix(conf.logPrefix + " ")
 	log.SetOutput(out)
@@ -50,11 +54,11 @@ func main() {
 		defer f.Close()
 	}
 
+	// Run command, piping output to stdout / stderr and to the URL.
 	url := flag.Arg(0)
 	args := flag.Args()[1:]
 
-	err := busltee(conf, url, args)
-	if err != nil {
+	if err := busltee(conf, url, args); err != nil {
 		log.Printf("busltee.main.error count#busltee.main.error=1 error=%v", err.Error())
 		os.Exit(exitStatus(err))
 	}
