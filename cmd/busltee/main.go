@@ -120,6 +120,8 @@ func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout float64) 
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
+	// Prevent net/http from closing the reader on failure -- otherwise
+	// we'll get broken pipe errors.
 	req, err := http.NewRequest("POST", url, ioutil.NopCloser(stdin))
 	if err != nil {
 		return err
