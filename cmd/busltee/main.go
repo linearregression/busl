@@ -139,14 +139,20 @@ func run(args []string, stdout, stderr io.WriteCloser) error {
 	defer stderr.Close()
 	defer monitor("busltee.run", time.Now())
 
+	// Setup command with output multiplexed out to
+	// stdout/stderr and also to the designated output
+	// streams.
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = io.MultiWriter(stdout, os.Stdout)
 	cmd.Stderr = io.MultiWriter(stderr, os.Stderr)
 
+	// Catch any signals sent to busltee, and pass those along.
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc)
 	go func() {
 		s := <-sigc
+		// Certain conditions empirically show that we get a
+		// cmd.Process, possibly due to race conditions.
 		if cmd.Process == nil {
 			log.Printf("count#busltee.run.error error=cmd.Process is nil")
 		} else {
