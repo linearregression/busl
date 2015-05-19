@@ -17,7 +17,7 @@ import (
 	flag "github.com/heroku/busl/Godeps/_workspace/src/github.com/ogier/pflag"
 )
 
-const usage string = "Usage: busltee <url> [-k|--insecure] [--connect-timeout N] -- <command>"
+const usage = "Usage: busltee <url> [-k|--insecure] [--connect-timeout N] -- <command>"
 
 type config struct {
 	insecure  bool
