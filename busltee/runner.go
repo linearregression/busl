@@ -37,6 +37,9 @@ func Run(url string, args []string, conf *config) (exitCode int) {
 		exitCode = exitStatus(err)
 	}
 
+	// Only wait atmost 1 second after the full command has completed.
+	// If it's not done by then, it probably means something else has gone
+	// wrong and it's not worth waiting any longer.
 	select {
 	case <-uploaded:
 	case <-time.After(time.Second):
