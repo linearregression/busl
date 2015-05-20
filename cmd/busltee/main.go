@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/heroku/busl/busltee"
@@ -10,7 +9,7 @@ import (
 func main() {
 	conf, err := busltee.ParseFlags()
 	if err != nil {
-		fmt.Println(err.Error())
+		busltee.Usage()
 		os.Exit(1)
 	}
 

@@ -95,7 +95,7 @@ func TestRun(t *testing.T) {
 	server, post := fauxBusl()
 	defer server.Close()
 
-	if code := Run(server.URL, []string{"printf", "hello"}, &config{}); code != 0 {
+	if code := Run(server.URL, []string{"printf", "hello"}, &flags{}); code != 0 {
 		t.Fatalf("Expected exit code to be 0, got %d", code)
 	}
 

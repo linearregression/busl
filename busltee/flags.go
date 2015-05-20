@@ -2,11 +2,11 @@ package busltee
 
 import (
 	"errors"
+	"fmt"
+	"os"
 
 	flag "github.com/heroku/busl/Godeps/_workspace/src/github.com/ogier/pflag"
 )
-
-const usage = "Usage: busltee <url> [-k|--insecure] [--connect-timeout N] -- <command>"
 
 type flags struct {
 	Insecure  bool
@@ -16,6 +16,11 @@ type flags struct {
 	Args      []string
 	LogPrefix string
 	LogFile   string
+}
+
+var Usage = func() {
+	fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS] <url> -- <command>\n", os.Args[0])
+	flag.PrintDefaults()
 }
 
 func ParseFlags() (*flags, error) {
@@ -31,7 +36,7 @@ func ParseFlags() (*flags, error) {
 	flag.StringVar(&f.LogFile, "log-file", "", "log file")
 
 	if flag.Parse(); len(flag.Args()) < 2 {
-		return nil, errors.New(usage)
+		return nil, errors.New("insufficient args")
 	}
 
 	f.URL = flag.Arg(0)
