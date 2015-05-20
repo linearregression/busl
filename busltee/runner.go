@@ -60,18 +60,23 @@ func stream(retry int, url string, stdin io.Reader, insecure bool, timeout float
 	return err
 }
 
+var errMissingURL = errors.New("Missing URL")
+
 func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout float64) error {
 	defer monitor("busltee.stream", time.Now())
 
 	if url == "" {
 		log.Printf("count#busltee.stream.missingurl")
-		return errors.New("Missing URL")
+		return errMissingURL
 	}
 
+	// For some reason, using `Timeout` with a sub second long connect timeout
+	// doesn't work. Using Deadline works though, which is pretty much the same
+	// thing, except a bit more verbose.
 	tr := &http.Transport{
 		Dial: (&net.Dialer{
-			Timeout:   time.Duration(timeout) * time.Second,
 			KeepAlive: 30 * time.Second,
+			Deadline:  time.Now().Add(time.Duration(timeout) * time.Second),
 		}).Dial,
 	}
 
@@ -105,21 +110,19 @@ func run(args []string, stdout, stderr io.WriteCloser) error {
 	cmd.Stdout = io.MultiWriter(stdout, os.Stdout)
 	cmd.Stderr = io.MultiWriter(stderr, os.Stderr)
 
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
 	// Catch any signals sent to busltee, and pass those along.
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc)
 	go func() {
 		s := <-sigc
-		// Certain conditions empirically show that we get a
-		// cmd.Process, possibly due to race conditions.
-		if cmd.Process == nil {
-			log.Printf("count#busltee.run.error error=cmd.Process is nil")
-		} else {
-			cmd.Process.Signal(s)
-		}
+		cmd.Process.Signal(s)
 	}()
 
-	return cmd.Run()
+	return cmd.Wait()
 }
 
 func isTimeout(err error) bool {
