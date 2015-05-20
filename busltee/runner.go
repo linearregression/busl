@@ -70,14 +70,16 @@ func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout float64) 
 		return errMissingURL
 	}
 
-	// For some reason, using `Timeout` with a sub second long connect timeout
-	// doesn't work. Using Deadline works though, which is pretty much the same
-	// thing, except a bit more verbose.
-	tr := &http.Transport{
-		Dial: (&net.Dialer{
+	tr := &http.Transport{}
+
+	// Using `Timeout` with a sub second long connect timeout
+	// doesn't work. Using Deadline works though, which is pretty
+	//  much the same thing, except a bit more verbose.
+	if timeout > 0 {
+		tr.Dial = (&net.Dialer{
 			KeepAlive: 30 * time.Second,
 			Deadline:  time.Now().Add(time.Duration(timeout) * time.Second),
-		}).Dial,
+		}).Dial
 	}
 
 	if insecure {
