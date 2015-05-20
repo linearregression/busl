@@ -51,7 +51,7 @@ func monitor(subject string, ts time.Time) {
 }
 
 func stream(retry int, url string, stdin io.Reader, insecure bool, timeout float64) (err error) {
-	for retries := retry; retries > 0; retries-- {
+	for retries := retry; retries >= 0; retries-- {
 		if err = streamNoRetry(url, stdin, insecure, timeout); !isTimeout(err) {
 			return err
 		}
