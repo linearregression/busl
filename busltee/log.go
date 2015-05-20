@@ -7,23 +7,23 @@ import (
 	"os"
 )
 
-var logOutput io.Writer
+var out io.Writer
 
 func OpenLogs(logFile, logPrefix string) {
-	logOutput = getLogOutput(logFile)
+	out = output(logFile)
 
 	log.SetPrefix(logPrefix + " ")
-	log.SetOutput(logOutput)
+	log.SetOutput(out)
 	log.SetFlags(0)
 }
 
 func CloseLogs() {
-	if f, ok := logOutput.(io.Closer); ok {
+	if f, ok := out.(io.Closer); ok {
 		f.Close()
 	}
 }
 
-func getLogOutput(logFile string) io.Writer {
+func output(logFile string) io.Writer {
 	if logFile == "" {
 		return ioutil.Discard
 	}
