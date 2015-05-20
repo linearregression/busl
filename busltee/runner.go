@@ -15,14 +15,14 @@ import (
 	"time"
 )
 
-func Run(url string, args []string, conf *config) (exitCode int) {
+func Run(url string, args []string, flag *flags) (exitCode int) {
 	defer monitor("busltee.busltee", time.Now())
 
 	reader, writer := io.Pipe()
 	uploaded := make(chan struct{})
 
 	go func() {
-		if err := stream(conf.Retry, url, reader, conf.Insecure, conf.Timeout); err != nil {
+		if err := stream(flag.Retry, url, reader, flag.Insecure, flag.Timeout); err != nil {
 			log.Printf("busltee.stream.error count#busltee.stream.error=1 error=%v", err.Error())
 			// Prevent writes from blocking.
 			io.Copy(ioutil.Discard, reader)

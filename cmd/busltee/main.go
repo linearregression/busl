@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	conf, err := busltee.Config()
+	conf, err := busltee.ParseFlags()
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
