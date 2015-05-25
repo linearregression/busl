@@ -109,7 +109,7 @@ func (r *reader) Read(p []byte) (n int, err error) {
 		return r.read(msg, p)
 	case redis.Subscription:
 	case error:
-		util.CountWithData("RedisBroker.redisSubscribe.RecieveError", 1, "err=%s", msg)
+		util.CountWithData("RedisBroker.redisSubscribe.ReceiveError", 1, "err=%s", msg)
 		err = msg
 		return
 	}
