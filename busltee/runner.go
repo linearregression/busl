@@ -22,7 +22,7 @@ func Run(url string, args []string, flag *flags) (exitCode int) {
 	uploaded := make(chan struct{})
 
 	go func() {
-		if err := stream(flag.Retry, url, reader, flag.Insecure, flag.Timeout); err != nil {
+		if err := stream(url, reader, flag); err != nil {
 			log.Printf("busltee.stream.error count#busltee.stream.error=1 error=%v", err.Error())
 			// Prevent writes from blocking.
 			io.Copy(ioutil.Discard, reader)
@@ -53,9 +53,9 @@ func monitor(subject string, ts time.Time) {
 	log.Printf("%s.time time=%f", subject, time.Now().Sub(ts).Seconds())
 }
 
-func stream(retry int, url string, stdin io.Reader, insecure bool, timeout float64) (err error) {
-	for retries := retry; retries >= 0; retries-- {
-		if err = streamNoRetry(url, stdin, insecure, timeout); !isTimeout(err) {
+func stream(url string, stdin io.Reader, flag *flags) (err error) {
+	for retries := flag.Retry; retries >= 0; retries-- {
+		if err = streamNoRetry(url, stdin, flag); !isTimeout(err) {
 			return err
 		}
 		log.Printf("count#busltee.stream.retry")
@@ -65,7 +65,7 @@ func stream(retry int, url string, stdin io.Reader, insecure bool, timeout float
 
 var errMissingURL = errors.New("Missing URL")
 
-func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout float64) error {
+func streamNoRetry(url string, stdin io.Reader, flag *flags) error {
 	defer monitor("busltee.stream", time.Now())
 
 	if url == "" {
@@ -73,7 +73,7 @@ func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout float64) 
 		return errMissingURL
 	}
 
-	tr := newTransport(insecure, timeout)
+	tr := newTransport(flag)
 
 	// Prevent net/http from closing the reader on failure -- otherwise
 	// we'll get broken pipe errors.
@@ -89,20 +89,20 @@ func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout float64) 
 	return err
 }
 
-func newTransport(insecure bool, timeout float64) *http.Transport {
+func newTransport(flag *flags) *http.Transport {
 	tr := &http.Transport{}
 
 	// Using `Timeout` with a sub second long connect timeout
 	// doesn't work. Using Deadline works though, which is pretty
 	//  much the same thing, except a bit more verbose.
-	if timeout > 0 {
+	if flag.Timeout > 0 {
 		tr.Dial = (&net.Dialer{
 			KeepAlive: 30 * time.Second,
-			Deadline:  time.Now().Add(time.Duration(timeout) * time.Second),
+			Deadline:  time.Now().Add(time.Duration(flag.Timeout) * time.Second),
 		}).Dial
 	}
 
-	if insecure {
+	if flag.Insecure {
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 

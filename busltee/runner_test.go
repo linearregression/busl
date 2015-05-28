@@ -11,8 +11,10 @@ import (
 	"time"
 )
 
+var f = &flags{Timeout: 1}
+
 func TestStreamNoURL(t *testing.T) {
-	err := streamNoRetry("", strings.NewReader(""), false, 0.001)
+	err := streamNoRetry("", strings.NewReader(""), f)
 
 	if err != errMissingURL {
 		t.Fatalf("Expected err to be %v", errMissingURL)
@@ -20,7 +22,7 @@ func TestStreamNoURL(t *testing.T) {
 }
 
 func TestStreamTimeout(t *testing.T) {
-	err := streamNoRetry("http://10.255.255.1", strings.NewReader(""), false, 0.001)
+	err := streamNoRetry("http://10.255.255.1", strings.NewReader(""), f)
 
 	if !isTimeout(err) {
 		t.Fatalf("Expected err to be a timeout error, got %v", err)
@@ -28,7 +30,7 @@ func TestStreamTimeout(t *testing.T) {
 }
 
 func TestStreamConnRefused(t *testing.T) {
-	err := streamNoRetry("http://0.0.0.0:0", strings.NewReader(""), false, 1)
+	err := streamNoRetry("http://0.0.0.0:0", strings.NewReader(""), f)
 
 	if err == nil {
 		t.Fatalf("Expected err to be non-nil, got %v", err)
@@ -37,7 +39,7 @@ func TestStreamConnRefused(t *testing.T) {
 
 func TestStreamDoesNotCloseReader(t *testing.T) {
 	r, w := io.Pipe()
-	streamNoRetry("http://0.0.0.0:0", r, false, 1)
+	streamNoRetry("http://0.0.0.0:0", r, f)
 	go func() {
 		p := make([]byte, 10)
 		r.Read(p)
@@ -57,7 +59,7 @@ func TestStreamPost(t *testing.T) {
 	done := make(chan struct{})
 
 	go func() {
-		streamNoRetry(server.URL, r, false, 1)
+		streamNoRetry(server.URL, r, f)
 		close(done)
 	}()
 
