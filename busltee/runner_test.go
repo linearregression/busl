@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var conf = &config{Timeout: 1}
+var conf = &Config{Timeout: 1}
 
 func TestStreamNoURL(t *testing.T) {
 	err := streamNoRetry("", strings.NewReader(""), conf)
@@ -97,7 +97,7 @@ func TestRun(t *testing.T) {
 	server, post := fauxBusl()
 	defer server.Close()
 
-	if code := Run(server.URL, []string{"printf", "hello"}, &config{}); code != 0 {
+	if code := Run(server.URL, []string{"printf", "hello"}, &Config{}); code != 0 {
 		t.Fatalf("Expected exit code to be 0, got %d", code)
 	}
 

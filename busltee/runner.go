@@ -15,7 +15,17 @@ import (
 	"time"
 )
 
-func Run(url string, args []string, conf *config) (exitCode int) {
+type Config struct {
+	Insecure  bool
+	Timeout   float64
+	Retry     int
+	URL       string
+	Args      []string
+	LogPrefix string
+	LogFile   string
+}
+
+func Run(url string, args []string, conf *Config) (exitCode int) {
 	defer monitor("busltee.busltee", time.Now())
 
 	reader, writer := io.Pipe()
@@ -39,7 +49,7 @@ func monitor(subject string, ts time.Time) {
 	log.Printf("%s.time time=%f", subject, time.Now().Sub(ts).Seconds())
 }
 
-func post(url string, reader io.Reader, conf *config) chan struct{} {
+func post(url string, reader io.Reader, conf *Config) chan struct{} {
 	done := make(chan struct{})
 
 	go func() {
@@ -56,7 +66,7 @@ func post(url string, reader io.Reader, conf *config) chan struct{} {
 	return done
 }
 
-func stream(url string, stdin io.Reader, conf *config) (err error) {
+func stream(url string, stdin io.Reader, conf *Config) (err error) {
 	for retries := conf.Retry; retries >= 0; retries-- {
 		if err = streamNoRetry(url, stdin, conf); !isTimeout(err) {
 			return err
@@ -68,7 +78,7 @@ func stream(url string, stdin io.Reader, conf *config) (err error) {
 
 var errMissingURL = errors.New("Missing URL")
 
-func streamNoRetry(url string, stdin io.Reader, conf *config) error {
+func streamNoRetry(url string, stdin io.Reader, conf *Config) error {
 	defer monitor("busltee.stream", time.Now())
 
 	if url == "" {
@@ -95,7 +105,7 @@ func streamNoRetry(url string, stdin io.Reader, conf *config) error {
 	return err
 }
 
-func newTransport(conf *config) *http.Transport {
+func newTransport(conf *Config) *http.Transport {
 	tr := &http.Transport{}
 
 	if conf.Timeout > 0 {
