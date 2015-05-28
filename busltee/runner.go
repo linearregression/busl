@@ -22,14 +22,14 @@ func Run(url string, args []string, conf *config) (exitCode int) {
 	done := post(url, reader, conf)
 
 	if err := run(args, writer, writer); err != nil {
-		log.Printf("count#busltee.Run.error=1 error=%v", err.Error())
+		log.Printf("count#busltee.exec.error=1 error=%v", err.Error())
 		exitCode = exitStatus(err)
 	}
 
 	select {
 	case <-done:
 	case <-time.After(time.Second):
-		log.Printf("count#busltee.Run.upload.timeout=1")
+		log.Printf("count#busltee.exec.upload.timeout=1")
 	}
 
 	return exitCode
