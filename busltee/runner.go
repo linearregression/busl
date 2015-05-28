@@ -22,17 +22,14 @@ func Run(url string, args []string, conf *config) (exitCode int) {
 	done := post(url, reader, conf)
 
 	if err := run(args, writer, writer); err != nil {
-		log.Printf("busltee.Run.error count#busltee.Run.error=1 error=%v", err.Error())
+		log.Printf("count#busltee.Run.error=1 error=%v", err.Error())
 		exitCode = exitStatus(err)
 	}
 
-	// Only wait at most 1 second after the full command has completed.
-	// If it's not done by then, it probably means something else has gone
-	// wrong and it's not worth waiting any longer.
 	select {
 	case <-done:
 	case <-time.After(time.Second):
-		log.Printf("busltee.Run.upload.timeout count#busltee.Run.upload.timeout=1")
+		log.Printf("count#busltee.Run.upload.timeout=1")
 	}
 
 	return exitCode
@@ -47,11 +44,11 @@ func post(url string, reader io.Reader, conf *config) chan struct{} {
 
 	go func() {
 		if err := stream(url, reader, conf); err != nil {
-			log.Printf("busltee.stream.error count#busltee.stream.error=1 error=%v", err.Error())
+			log.Printf("count#busltee.stream.error=1 error=%v", err.Error())
 			// Prevent writes from blocking.
 			io.Copy(ioutil.Discard, reader)
 		} else {
-			log.Printf("busltee.stream.success count#busltee.stream.success=1")
+			log.Printf("count#busltee.stream.success=1")
 		}
 		close(done)
 	}()
@@ -81,8 +78,11 @@ func streamNoRetry(url string, stdin io.Reader, conf *config) error {
 
 	tr := newTransport(conf)
 
-	// Prevent net/http from closing the reader on failure -- otherwise
-	// we'll get broken pipe errors.
+	// In the event that the `busl` connection doesn't work,
+	// we still need to proceed with the command's execution.
+	// For this reason, we wrap `stdin` in NopCloser to prevent
+	// it from being closed prematurely (and thus allowing writes
+	// on the other end of the pipe to work).
 	req, err := http.NewRequest("POST", url, ioutil.NopCloser(stdin))
 	if err != nil {
 		return err
@@ -98,13 +98,10 @@ func streamNoRetry(url string, stdin io.Reader, conf *config) error {
 func newTransport(conf *config) *http.Transport {
 	tr := &http.Transport{}
 
-	// Using `Timeout` with a sub second long connect timeout
-	// doesn't work. Using Deadline works though, which is pretty
-	//  much the same thing, except a bit more verbose.
 	if conf.Timeout > 0 {
 		tr.Dial = (&net.Dialer{
 			KeepAlive: 30 * time.Second,
-			Deadline:  time.Now().Add(time.Duration(conf.Timeout) * time.Second),
+			Timeout:   time.Duration(conf.Timeout) * time.Second,
 		}).Dial
 	}
 
@@ -153,7 +150,6 @@ func exitStatus(err error) int {
 			return status.ExitStatus()
 		}
 	}
-
 	// Default to exit status 1 if we can't type assert the error.
 	return 1
 }
