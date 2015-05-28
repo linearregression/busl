@@ -19,29 +19,18 @@ func Run(url string, args []string, conf *config) (exitCode int) {
 	defer monitor("busltee.busltee", time.Now())
 
 	reader, writer := io.Pipe()
-	uploaded := make(chan struct{})
-
-	go func() {
-		if err := stream(url, reader, conf); err != nil {
-			log.Printf("busltee.stream.error count#busltee.stream.error=1 error=%v", err.Error())
-			// Prevent writes from blocking.
-			io.Copy(ioutil.Discard, reader)
-		} else {
-			log.Printf("busltee.stream.success count#busltee.stream.success=1")
-		}
-		close(uploaded)
-	}()
+	done := post(url, reader, conf)
 
 	if err := run(args, writer, writer); err != nil {
 		log.Printf("busltee.Run.error count#busltee.Run.error=1 error=%v", err.Error())
 		exitCode = exitStatus(err)
 	}
 
-	// Only wait atmost 1 second after the full command has completed.
+	// Only wait at most 1 second after the full command has completed.
 	// If it's not done by then, it probably means something else has gone
 	// wrong and it's not worth waiting any longer.
 	select {
-	case <-uploaded:
+	case <-done:
 	case <-time.After(time.Second):
 		log.Printf("busltee.Run.upload.timeout count#busltee.Run.upload.timeout=1")
 	}
@@ -51,6 +40,23 @@ func Run(url string, args []string, conf *config) (exitCode int) {
 
 func monitor(subject string, ts time.Time) {
 	log.Printf("%s.time time=%f", subject, time.Now().Sub(ts).Seconds())
+}
+
+func post(url string, reader io.Reader, conf *config) chan struct{} {
+	done := make(chan struct{})
+
+	go func() {
+		if err := stream(url, reader, conf); err != nil {
+			log.Printf("busltee.stream.error count#busltee.stream.error=1 error=%v", err.Error())
+			// Prevent writes from blocking.
+			io.Copy(ioutil.Discard, reader)
+		} else {
+			log.Printf("busltee.stream.success count#busltee.stream.success=1")
+		}
+		close(done)
+	}()
+
+	return done
 }
 
 func stream(url string, stdin io.Reader, conf *config) (err error) {
