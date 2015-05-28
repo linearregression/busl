@@ -120,9 +120,6 @@ func run(args []string, stdout, stderr io.WriteCloser) error {
 	defer stderr.Close()
 	defer monitor("busltee.run", time.Now())
 
-	// Setup command with output multiplexed out to
-	// stdout/stderr and also to the designated output
-	// streams.
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = io.MultiWriter(stdout, os.Stdout)
 	cmd.Stderr = io.MultiWriter(stderr, os.Stderr)
@@ -133,7 +130,6 @@ func run(args []string, stdout, stderr io.WriteCloser) error {
 
 	// Catch any signals sent to busltee, and pass those along.
 	deliverSignals(cmd)
-
 	return cmd.Wait()
 }
 
