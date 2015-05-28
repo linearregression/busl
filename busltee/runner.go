@@ -73,6 +73,23 @@ func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout float64) 
 		return errMissingURL
 	}
 
+	tr := newTransport(insecure, timeout)
+
+	// Prevent net/http from closing the reader on failure -- otherwise
+	// we'll get broken pipe errors.
+	req, err := http.NewRequest("POST", url, ioutil.NopCloser(stdin))
+	if err != nil {
+		return err
+	}
+
+	res, err := tr.RoundTrip(req)
+	if res != nil {
+		defer res.Body.Close()
+	}
+	return err
+}
+
+func newTransport(insecure bool, timeout float64) *http.Transport {
 	tr := &http.Transport{}
 
 	// Using `Timeout` with a sub second long connect timeout
@@ -89,18 +106,7 @@ func streamNoRetry(url string, stdin io.Reader, insecure bool, timeout float64) 
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
-	// Prevent net/http from closing the reader on failure -- otherwise
-	// we'll get broken pipe errors.
-	req, err := http.NewRequest("POST", url, ioutil.NopCloser(stdin))
-	if err != nil {
-		return err
-	}
-
-	res, err := tr.RoundTrip(req)
-	if res != nil {
-		defer res.Body.Close()
-	}
-	return err
+	return tr
 }
 
 func run(args []string, stdout, stderr io.WriteCloser) error {
