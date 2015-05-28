@@ -11,10 +11,10 @@ import (
 	"time"
 )
 
-var f = &flags{Timeout: 1}
+var conf = &config{Timeout: 1}
 
 func TestStreamNoURL(t *testing.T) {
-	err := streamNoRetry("", strings.NewReader(""), f)
+	err := streamNoRetry("", strings.NewReader(""), conf)
 
 	if err != errMissingURL {
 		t.Fatalf("Expected err to be %v", errMissingURL)
@@ -22,7 +22,7 @@ func TestStreamNoURL(t *testing.T) {
 }
 
 func TestStreamTimeout(t *testing.T) {
-	err := streamNoRetry("http://10.255.255.1", strings.NewReader(""), f)
+	err := streamNoRetry("http://10.255.255.1", strings.NewReader(""), conf)
 
 	if !isTimeout(err) {
 		t.Fatalf("Expected err to be a timeout error, got %v", err)
@@ -30,7 +30,7 @@ func TestStreamTimeout(t *testing.T) {
 }
 
 func TestStreamConnRefused(t *testing.T) {
-	err := streamNoRetry("http://0.0.0.0:0", strings.NewReader(""), f)
+	err := streamNoRetry("http://0.0.0.0:0", strings.NewReader(""), conf)
 
 	if err == nil {
 		t.Fatalf("Expected err to be non-nil, got %v", err)
@@ -39,7 +39,7 @@ func TestStreamConnRefused(t *testing.T) {
 
 func TestStreamDoesNotCloseReader(t *testing.T) {
 	r, w := io.Pipe()
-	streamNoRetry("http://0.0.0.0:0", r, f)
+	streamNoRetry("http://0.0.0.0:0", r, conf)
 	go func() {
 		p := make([]byte, 10)
 		r.Read(p)
@@ -59,7 +59,7 @@ func TestStreamPost(t *testing.T) {
 	done := make(chan struct{})
 
 	go func() {
-		streamNoRetry(server.URL, r, f)
+		streamNoRetry(server.URL, r, conf)
 		close(done)
 	}()
 
@@ -97,7 +97,7 @@ func TestRun(t *testing.T) {
 	server, post := fauxBusl()
 	defer server.Close()
 
-	if code := Run(server.URL, []string{"printf", "hello"}, &flags{}); code != 0 {
+	if code := Run(server.URL, []string{"printf", "hello"}, &config{}); code != 0 {
 		t.Fatalf("Expected exit code to be 0, got %d", code)
 	}
 

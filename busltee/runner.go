@@ -15,14 +15,14 @@ import (
 	"time"
 )
 
-func Run(url string, args []string, flag *flags) (exitCode int) {
+func Run(url string, args []string, conf *config) (exitCode int) {
 	defer monitor("busltee.busltee", time.Now())
 
 	reader, writer := io.Pipe()
 	uploaded := make(chan struct{})
 
 	go func() {
-		if err := stream(url, reader, flag); err != nil {
+		if err := stream(url, reader, conf); err != nil {
 			log.Printf("busltee.stream.error count#busltee.stream.error=1 error=%v", err.Error())
 			// Prevent writes from blocking.
 			io.Copy(ioutil.Discard, reader)
@@ -53,9 +53,9 @@ func monitor(subject string, ts time.Time) {
 	log.Printf("%s.time time=%f", subject, time.Now().Sub(ts).Seconds())
 }
 
-func stream(url string, stdin io.Reader, flag *flags) (err error) {
-	for retries := flag.Retry; retries >= 0; retries-- {
-		if err = streamNoRetry(url, stdin, flag); !isTimeout(err) {
+func stream(url string, stdin io.Reader, conf *config) (err error) {
+	for retries := conf.Retry; retries >= 0; retries-- {
+		if err = streamNoRetry(url, stdin, conf); !isTimeout(err) {
 			return err
 		}
 		log.Printf("count#busltee.stream.retry")
@@ -65,7 +65,7 @@ func stream(url string, stdin io.Reader, flag *flags) (err error) {
 
 var errMissingURL = errors.New("Missing URL")
 
-func streamNoRetry(url string, stdin io.Reader, flag *flags) error {
+func streamNoRetry(url string, stdin io.Reader, conf *config) error {
 	defer monitor("busltee.stream", time.Now())
 
 	if url == "" {
@@ -73,7 +73,7 @@ func streamNoRetry(url string, stdin io.Reader, flag *flags) error {
 		return errMissingURL
 	}
 
-	tr := newTransport(flag)
+	tr := newTransport(conf)
 
 	// Prevent net/http from closing the reader on failure -- otherwise
 	// we'll get broken pipe errors.
@@ -89,20 +89,20 @@ func streamNoRetry(url string, stdin io.Reader, flag *flags) error {
 	return err
 }
 
-func newTransport(flag *flags) *http.Transport {
+func newTransport(conf *config) *http.Transport {
 	tr := &http.Transport{}
 
 	// Using `Timeout` with a sub second long connect timeout
 	// doesn't work. Using Deadline works though, which is pretty
 	//  much the same thing, except a bit more verbose.
-	if flag.Timeout > 0 {
+	if conf.Timeout > 0 {
 		tr.Dial = (&net.Dialer{
 			KeepAlive: 30 * time.Second,
-			Deadline:  time.Now().Add(time.Duration(flag.Timeout) * time.Second),
+			Deadline:  time.Now().Add(time.Duration(conf.Timeout) * time.Second),
 		}).Dial
 	}
 
-	if flag.Insecure {
+	if conf.Insecure {
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
