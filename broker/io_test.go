@@ -6,8 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"testing"
 
 	"github.com/heroku/busl/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func setup() string {
@@ -69,7 +71,7 @@ func ExampleFullReplay() {
 	// busl hello world
 }
 
-func ExampleSeekCorrect() {
+func TestSeekCorrect(t *testing.T) {
 	uuid := setup()
 
 	w, _ := NewWriter(uuid)
@@ -83,13 +85,10 @@ func ExampleSeekCorrect() {
 	defer r.(io.Closer).Close()
 
 	buf, _ := ioutil.ReadAll(r)
-	fmt.Printf("%s", buf)
-
-	//Output:
-	// world
+	assert.Equal(t, " world", string(buf))
 }
 
-func ExampleSeekBeyond() {
+func TestSeekBeyond(t *testing.T) {
 	uuid := setup()
 
 	w, _ := NewWriter(uuid)
@@ -103,10 +102,7 @@ func ExampleSeekBeyond() {
 	defer r.Close()
 
 	buf, _ := ioutil.ReadAll(r)
-	fmt.Printf("%s", buf)
-
-	//Output:
-	//
+	assert.Equal(t, []byte{}, buf)
 }
 
 func ExampleHalfReplayHalfSubscribed() {
@@ -140,7 +136,7 @@ func ExampleHalfReplayHalfSubscribed() {
 	// busl hello world
 }
 
-func ExampleOverflowingBuffer() {
+func TestOverflowingBuffer(t *testing.T) {
 	uuid := setup()
 
 	w, _ := NewWriter(uuid)
@@ -157,15 +153,11 @@ func ExampleOverflowingBuffer() {
 	r, _ := NewReader(uuid)
 	defer r.(io.Closer).Close()
 
-	done := make(chan struct{})
+	done := make(chan int64)
 	go func() {
 		n, _ := io.Copy(ioutil.Discard, r)
-		fmt.Printf("%d", n)
-		close(done)
+		done <- n
 	}()
 	w.Close()
-	<-done
-
-	//Output:
-	// 32769
+	assert.Equal(t, int64(32769), <-done)
 }
