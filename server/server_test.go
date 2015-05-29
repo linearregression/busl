@@ -22,7 +22,7 @@ func TestMkstream(t *testing.T) {
 	mkstream(response, request)
 
 	assert.Equal(t, response.Code, 200)
-	assert.Equal(t, len(response.Body.String()), 32)
+	assert.Len(t, response.Body.String(), 32)
 }
 
 func Test410(t *testing.T) {
@@ -71,14 +71,14 @@ func TestPubSub(t *testing.T) {
 		// uuid = curl -XPOST <url>/streams
 		resp, err := http.Post(server.URL+"/streams", "", nil)
 		defer resp.Body.Close()
-		assert.Equal(t, err, nil)
+		assert.Nil(t, err)
 
 		body, err := ioutil.ReadAll(resp.Body)
-		assert.Equal(t, err, nil)
+		assert.Nil(t, err)
 
 		// uuid extracted
 		uuid := string(body)
-		assert.Equal(t, len(uuid), 32)
+		assert.Len(t, uuid, 32)
 
 		done := make(chan bool)
 
@@ -87,7 +87,7 @@ func TestPubSub(t *testing.T) {
 			// -- waiting for publish to arrive
 			resp, err = http.Get(server.URL + "/streams/" + uuid)
 			defer resp.Body.Close()
-			assert.Equal(t, err, nil)
+			assert.Nil(t, err)
 
 			body, _ = ioutil.ReadAll(resp.Body)
 			assert.Equal(t, body, expected)
@@ -103,7 +103,7 @@ func TestPubSub(t *testing.T) {
 		req.TransferEncoding = []string{"chunked"}
 		r, err := client.Do(req)
 		r.Body.Close()
-		assert.Equal(t, err, nil)
+		assert.Nil(t, err)
 
 		<-done
 
@@ -113,7 +113,7 @@ func TestPubSub(t *testing.T) {
 		// in chunks as they arrive.
 		resp, err = http.Get(server.URL + "/streams/" + uuid)
 		defer resp.Body.Close()
-		assert.Equal(t, err, nil)
+		assert.Nil(t, err)
 
 		body, _ = ioutil.ReadAll(resp.Body)
 		assert.Equal(t, body, expected)
@@ -149,7 +149,7 @@ func TestPubSubSSE(t *testing.T) {
 		request, _ := http.NewRequest("PUT", url, nil)
 		resp, err := client.Do(request)
 		defer resp.Body.Close()
-		assert.Equal(t, err, nil)
+		assert.Nil(t, err)
 
 		done := make(chan bool)
 
@@ -158,7 +158,7 @@ func TestPubSubSSE(t *testing.T) {
 		req.TransferEncoding = []string{"chunked"}
 
 		r, err := client.Do(req)
-		assert.Equal(t, err, nil)
+		assert.Nil(t, err)
 		r.Body.Close()
 
 		go func() {
@@ -170,7 +170,7 @@ func TestPubSubSSE(t *testing.T) {
 			// -- waiting for publish to arrive
 			resp, err = client.Do(request)
 			defer resp.Body.Close()
-			assert.Equal(t, err, nil)
+			assert.Nil(t, err)
 
 			body, _ := ioutil.ReadAll(resp.Body)
 			assert.Equal(t, body, []byte(testdata.output))
@@ -197,11 +197,11 @@ func TestPut(t *testing.T) {
 	request, _ := http.NewRequest("PUT", server.URL+"/streams/1/2/3", nil)
 	resp, err := client.Do(request)
 	defer resp.Body.Close()
-	assert.Equal(t, err, nil)
+	assert.Nil(t, err)
 	assert.Equal(t, resp.StatusCode, http.StatusCreated)
 
 	registrar := broker.NewRedisRegistrar()
-	assert.Equal(t, registrar.IsRegistered("1/2/3"), true)
+	assert.True(t, registrar.IsRegistered("1/2/3"))
 }
 
 func TestSubGoneWithBackend(t *testing.T) {
@@ -222,7 +222,7 @@ func TestSubGoneWithBackend(t *testing.T) {
 
 	resp, err := http.Get(server.URL + "/streams/" + uuid)
 	defer resp.Body.Close()
-	assert.Equal(t, err, nil)
+	assert.Nil(t, err)
 
 	body, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, body, []byte("hello world"))
@@ -253,7 +253,7 @@ func TestPutWithBackend(t *testing.T) {
 	request.TransferEncoding = []string{"chunked"}
 	resp, err := client.Do(request)
 	defer resp.Body.Close()
-	assert.Equal(t, err, nil)
+	assert.Nil(t, err)
 	assert.Equal(t, resp.StatusCode, 200)
 	assert.Equal(t, <-put, []byte("hello world"))
 }
@@ -289,7 +289,7 @@ func TestAuthentication(t *testing.T) {
 			}
 			resp, err := client.Do(request)
 			defer resp.Body.Close()
-			assert.Equal(t, err, nil)
+			assert.Nil(t, err)
 			assert.Equal(t, resp.Status, "401 Unauthorized")
 		}
 	}
@@ -302,7 +302,7 @@ func TestAuthentication(t *testing.T) {
 			request.SetBasicAuth("u", token)
 			resp, err := client.Do(request)
 			defer resp.Body.Close()
-			assert.Equal(t, err, nil)
+			assert.Nil(t, err)
 			assert.Equal(t, resp.StatusCode, status[method])
 		}
 	}
