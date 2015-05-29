@@ -2,11 +2,9 @@ package server
 
 import (
 	"bytes"
-	"fmt"
 	. "github.com/heroku/busl/Godeps/_workspace/src/gopkg.in/check.v1"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/util"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -19,24 +17,10 @@ func Test(t *testing.T) { TestingT(t) }
 type HttpServerSuite struct{}
 
 var _ = Suite(&HttpServerSuite{})
-var sf = fmt.Sprintf
 var baseURL = *util.StorageBaseURL
 
-func newRequest(method, url, body string) *http.Request {
-	return newRequestFromReader(method, url, bytes.NewBufferString(body))
-}
-
-func newRequestFromReader(method, url string, reader io.Reader) *http.Request {
-	request, _ := http.NewRequest(method, url, reader)
-	if method == "POST" {
-		request.TransferEncoding = []string{"chunked"}
-		request.Header.Add("Transfer-Encoding", "chunked")
-	}
-	return request
-}
-
 func (s *HttpServerSuite) TestMkstream(c *C) {
-	request := newRequest("POST", "/streams", "")
+	request, _ := http.NewRequest("POST", "/streams", nil)
 	response := httptest.NewRecorder()
 
 	mkstream(response, request)
@@ -47,8 +31,8 @@ func (s *HttpServerSuite) TestMkstream(c *C) {
 
 func (s *HttpServerSuite) Test410(c *C) {
 	streamId, _ := util.NewUUID()
-	request := newRequest("GET", "/streams/"+string(streamId), "")
-	response := CloseNotifierRecorder{httptest.NewRecorder(), make(chan bool, 1)}
+	request, _ := http.NewRequest("GET", "/streams/"+streamId, nil)
+	response := httptest.NewRecorder()
 
 	sub(response, request)
 
@@ -58,7 +42,8 @@ func (s *HttpServerSuite) Test410(c *C) {
 
 func (s *HttpServerSuite) TestPubNotRegistered(c *C) {
 	streamId, _ := util.NewUUID()
-	request := newRequest("POST", "/streams/"+string(streamId), "")
+	request, _ := http.NewRequest("POST", "/streams/"+streamId, nil)
+	request.TransferEncoding = []string{"chunked"}
 	response := httptest.NewRecorder()
 
 	pub(response, request)
@@ -118,7 +103,8 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 		client := &http.Client{Transport: transport}
 
 		// curl -XPOST -H "Transfer-Encoding: chunked" -d "hello" <url>/streams/<uuid>
-		req := newRequestFromReader("POST", server.URL+"/streams/"+uuid, bytes.NewReader(expected))
+		req, _ := http.NewRequest("POST", server.URL+"/streams/"+uuid, bytes.NewReader(expected))
+		req.TransferEncoding = []string{"chunked"}
 		r, err := client.Do(req)
 		r.Body.Close()
 		c.Assert(err, IsNil)
@@ -172,7 +158,9 @@ func (s *HttpServerSuite) TestPubSubSSE(c *C) {
 		done := make(chan bool)
 
 		// curl -XPOST -H "Transfer-Encoding: chunked" -d "hello" <url>/streams/<uuid>
-		req := newRequestFromReader("POST", url, bytes.NewReader([]byte(testdata.input)))
+		req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte(testdata.input)))
+		req.TransferEncoding = []string{"chunked"}
+
 		r, err := client.Do(req)
 		c.Assert(err, Equals, nil)
 		r.Body.Close()
@@ -210,7 +198,7 @@ func (s *HttpServerSuite) TestPut(c *C) {
 	client := &http.Client{Transport: transport}
 
 	// uuid = curl -XPUT <url>/streams/1/2/3
-	request := newRequest("PUT", server.URL+"/streams/1/2/3", "")
+	request, _ := http.NewRequest("PUT", server.URL+"/streams/1/2/3", nil)
 	resp, err := client.Do(request)
 	defer resp.Body.Close()
 	c.Assert(err, Equals, nil)
@@ -265,7 +253,8 @@ func (s *HttpServerSuite) TestPutWithBackend(c *C) {
 	registrar.Register(uuid)
 
 	// uuid = curl -XPUT <url>/streams/1/2/3
-	request := newRequest("POST", server.URL+"/streams/"+uuid, "hello world")
+	request, _ := http.NewRequest("POST", server.URL+"/streams/"+uuid, bytes.NewReader([]byte("hello world")))
+	request.TransferEncoding = []string{"chunked"}
 	resp, err := client.Do(request)
 	defer resp.Body.Close()
 	c.Assert(err, Equals, nil)
@@ -298,7 +287,7 @@ func (s *HttpServerSuite) TestAuthentication(c *C) {
 	// Validate that we return 401 for empty and invalid tokens
 	for _, token := range []string{"", "invalid"} {
 		for method, path := range testdata {
-			request := newRequest(method, server.URL+path, "")
+			request, _ := http.NewRequest(method, server.URL+path, nil)
 			if token != "" {
 				request.SetBasicAuth("", token)
 			}
@@ -313,7 +302,7 @@ func (s *HttpServerSuite) TestAuthentication(c *C) {
 	// accepted
 	for _, token := range []string{"pass1", "pass2"} {
 		for method, path := range testdata {
-			request := newRequest(method, server.URL+path, "")
+			request, _ := http.NewRequest(method, server.URL+path, nil)
 			request.SetBasicAuth("u", token)
 			resp, err := client.Do(request)
 			defer resp.Body.Close()
@@ -321,19 +310,6 @@ func (s *HttpServerSuite) TestAuthentication(c *C) {
 			c.Assert(resp.StatusCode, Equals, status[method])
 		}
 	}
-}
-
-type CloseNotifierRecorder struct {
-	*httptest.ResponseRecorder
-	closed chan bool
-}
-
-func (cnr CloseNotifierRecorder) close() {
-	cnr.closed <- true
-}
-
-func (cnr CloseNotifierRecorder) CloseNotify() <-chan bool {
-	return cnr.closed
 }
 
 func fileServer(id string) (*httptest.Server, chan []byte, chan []byte) {
