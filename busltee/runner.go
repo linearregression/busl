@@ -142,7 +142,7 @@ func run(args []string, stdout, stderr io.WriteCloser) error {
 
 func deliverSignals(cmd *exec.Cmd) {
 	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc)
+	signal.Notify(sigc, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		s := <-sigc
 		cmd.Process.Signal(s)
