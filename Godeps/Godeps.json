@@ -41,8 +41,9 @@
 			"Rev": "2e6f5f3f0c40ab9cb459742296f6a2aaab1fd5dc"
 		},
 		{
-			"ImportPath": "gopkg.in/check.v1",
-			"Rev": "5b76b26efe7f426789852e983fbde4de62c42282"
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Comment": "v1.0",
+			"Rev": "232e8563676cd15c3a36ba5e675ad4312ac4cb11"
 		}
 	]
 }

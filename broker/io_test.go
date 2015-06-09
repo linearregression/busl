@@ -6,7 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
+	"testing"
 
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/stretchr/testify/assert"
 	"github.com/heroku/busl/util"
 )
 
@@ -16,6 +19,16 @@ func setup() string {
 	registrar.Register(uuid)
 
 	return uuid
+}
+
+func newReaderWriter() (io.ReadCloser, io.WriteCloser) {
+	registrar := NewRedisRegistrar()
+	uuid, _ := util.NewUUID()
+	registrar.Register(uuid)
+	r, _ := NewReader(uuid)
+	w, _ := NewWriter(uuid)
+
+	return r, w
 }
 
 func ExamplePubSub() {
@@ -69,7 +82,7 @@ func ExampleFullReplay() {
 	// busl hello world
 }
 
-func ExampleSeekCorrect() {
+func TestSeekCorrect(t *testing.T) {
 	uuid := setup()
 
 	w, _ := NewWriter(uuid)
@@ -83,13 +96,10 @@ func ExampleSeekCorrect() {
 	defer r.(io.Closer).Close()
 
 	buf, _ := ioutil.ReadAll(r)
-	fmt.Printf("%s", buf)
-
-	//Output:
-	// world
+	assert.Equal(t, " world", string(buf))
 }
 
-func ExampleSeekBeyond() {
+func TestSeekBeyond(t *testing.T) {
 	uuid := setup()
 
 	w, _ := NewWriter(uuid)
@@ -103,10 +113,7 @@ func ExampleSeekBeyond() {
 	defer r.Close()
 
 	buf, _ := ioutil.ReadAll(r)
-	fmt.Printf("%s", buf)
-
-	//Output:
-	//
+	assert.Equal(t, []byte{}, buf)
 }
 
 func ExampleHalfReplayHalfSubscribed() {
@@ -140,7 +147,7 @@ func ExampleHalfReplayHalfSubscribed() {
 	// busl hello world
 }
 
-func ExampleOverflowingBuffer() {
+func TestOverflowingBuffer(t *testing.T) {
 	uuid := setup()
 
 	w, _ := NewWriter(uuid)
@@ -157,15 +164,62 @@ func ExampleOverflowingBuffer() {
 	r, _ := NewReader(uuid)
 	defer r.(io.Closer).Close()
 
-	done := make(chan struct{})
+	done := make(chan int64)
 	go func() {
 		n, _ := io.Copy(ioutil.Discard, r)
-		fmt.Printf("%d", n)
-		close(done)
+		done <- n
 	}()
 	w.Close()
-	<-done
+	assert.Equal(t, int64(32769), <-done)
+}
 
+func ExampleSubscribeConcurrent() {
+	r, w := newReaderWriter()
+
+	pub := make(chan bool)
+	done := make(chan bool)
+
+	go func() {
+		pub <- true
+		w.Write([]byte("busl"))
+		w.Close()
+	}()
+
+	go func() {
+		<-pub
+		io.Copy(os.Stdout, r)
+		done <- true
+	}()
+
+	<-done
 	//Output:
-	// 32769
+	// busl
+}
+
+func TestRedisReadFromClosed(t *testing.T) {
+	r, w := newReaderWriter()
+	p := make([]byte, 10)
+
+	r.Read(p)
+	w.Write([]byte("hello"))
+	w.Close()
+
+	// this read should short circuit with EOF
+	_, err := r.Read(p)
+	assert.Equal(t, err, io.EOF)
+
+	// We'll get true here because r.closed is already set
+	assert.True(t, ReaderDone(r))
+
+	// We should still get true here because doneId is set
+	r, _ = NewReader(string(r.(*reader).channel))
+	assert.True(t, ReaderDone(r))
+
+	// Reader done on a regular io.Reader should return false
+	// and not panic
+	assert.False(t, ReaderDone(strings.NewReader("hello")))
+
+	// NoContent should respond accordingly based on offset
+	assert.False(t, NoContent(r, 0))
+	assert.True(t, NoContent(r, 5))
 }

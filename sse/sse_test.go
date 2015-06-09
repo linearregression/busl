@@ -1,11 +1,12 @@
 package sse
 
 import (
-	. "github.com/heroku/busl/Godeps/_workspace/src/gopkg.in/check.v1"
 	"io"
 	"io/ioutil"
 	"strings"
 	"testing"
+
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/stretchr/testify/assert"
 )
 
 type table struct {
@@ -27,22 +28,16 @@ var (
 	}
 )
 
-func Test(t *testing.T) { TestingT(t) }
-
-type SseSuite struct{}
-
-var _ = Suite(&SseSuite{})
-
-func (s *SseSuite) TestNoNewline(c *C) {
-	for _, t := range testdata {
-		r := strings.NewReader(t.input)
+func TestNoNewline(t *testing.T) {
+	for _, data := range testdata {
+		r := strings.NewReader(data.input)
 		enc := NewEncoder(r)
-		enc.(io.Seeker).Seek(t.offset, 0)
-		c.Assert(readstring(enc), Equals, t.output)
+		enc.(io.Seeker).Seek(data.offset, 0)
+		assert.Equal(t, data.output, readstring(enc))
 	}
 }
 
-func (s *SseSuite) TestNonSeekableReader(c *C) {
+func TestNonSeekableReader(t *testing.T) {
 	// Seek the underlying reader before
 	// passing to LimitReader: comparably similar
 	// to scenario when reading from an http.Response
@@ -57,7 +52,7 @@ func (s *SseSuite) TestNonSeekableReader(c *C) {
 
 	// `id` should be 11 even though the underlying
 	// reader wasn't seeked at all.
-	c.Assert(readstring(enc), Equals, "id: 11\ndata: d\n\n")
+	assert.Equal(t, "id: 11\ndata: d\n\n", readstring(enc))
 }
 
 func readstring(r io.Reader) string {

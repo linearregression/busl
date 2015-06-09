@@ -2,45 +2,41 @@ package server
 
 import (
 	"bytes"
-	. "github.com/heroku/busl/Godeps/_workspace/src/gopkg.in/check.v1"
-	"github.com/heroku/busl/broker"
-	"github.com/heroku/busl/util"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
+
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/stretchr/testify/assert"
+	"github.com/heroku/busl/broker"
+	"github.com/heroku/busl/util"
 )
 
-func Test(t *testing.T) { TestingT(t) }
-
-type HttpServerSuite struct{}
-
-var _ = Suite(&HttpServerSuite{})
 var baseURL = *util.StorageBaseURL
 
-func (s *HttpServerSuite) TestMkstream(c *C) {
+func TestMkstream(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/streams", nil)
 	response := httptest.NewRecorder()
 
 	mkstream(response, request)
 
-	c.Assert(response.Code, Equals, 200)
-	c.Assert(response.Body.String(), HasLen, 32)
+	assert.Equal(t, response.Code, 200)
+	assert.Len(t, response.Body.String(), 32)
 }
 
-func (s *HttpServerSuite) Test410(c *C) {
+func Test410(t *testing.T) {
 	streamId, _ := util.NewUUID()
 	request, _ := http.NewRequest("GET", "/streams/"+streamId, nil)
 	response := httptest.NewRecorder()
 
 	sub(response, request)
 
-	c.Assert(response.Code, Equals, http.StatusNotFound)
-	c.Assert(response.Body.String(), Equals, "Channel is not registered.\n")
+	assert.Equal(t, response.Code, http.StatusNotFound)
+	assert.Equal(t, response.Body.String(), "Channel is not registered.\n")
 }
 
-func (s *HttpServerSuite) TestPubNotRegistered(c *C) {
+func TestPubNotRegistered(t *testing.T) {
 	streamId, _ := util.NewUUID()
 	request, _ := http.NewRequest("POST", "/streams/"+streamId, nil)
 	request.TransferEncoding = []string{"chunked"}
@@ -48,20 +44,20 @@ func (s *HttpServerSuite) TestPubNotRegistered(c *C) {
 
 	pub(response, request)
 
-	c.Assert(response.Code, Equals, http.StatusNotFound)
+	assert.Equal(t, response.Code, http.StatusNotFound)
 }
 
-func (s *HttpServerSuite) TestPubWithoutTransferEncoding(c *C) {
+func TestPubWithoutTransferEncoding(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/streams/1234", nil)
 	response := httptest.NewRecorder()
 
 	pub(response, request)
 
-	c.Assert(response.Code, Equals, http.StatusBadRequest)
-	c.Assert(response.Body.String(), Equals, "A chunked Transfer-Encoding header is required.\n")
+	assert.Equal(t, response.Code, http.StatusBadRequest)
+	assert.Equal(t, response.Body.String(), "A chunked Transfer-Encoding header is required.\n")
 }
 
-func (s *HttpServerSuite) TestPubSub(c *C) {
+func TestPubSub(t *testing.T) {
 	server := httptest.NewServer(app())
 	defer server.Close()
 
@@ -75,14 +71,14 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 		// uuid = curl -XPOST <url>/streams
 		resp, err := http.Post(server.URL+"/streams", "", nil)
 		defer resp.Body.Close()
-		c.Assert(err, Equals, nil)
+		assert.Nil(t, err)
 
 		body, err := ioutil.ReadAll(resp.Body)
-		c.Assert(err, Equals, nil)
+		assert.Nil(t, err)
 
 		// uuid extracted
 		uuid := string(body)
-		c.Assert(len(uuid), Equals, 32)
+		assert.Len(t, uuid, 32)
 
 		done := make(chan bool)
 
@@ -91,10 +87,10 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 			// -- waiting for publish to arrive
 			resp, err = http.Get(server.URL + "/streams/" + uuid)
 			defer resp.Body.Close()
-			c.Assert(err, IsNil)
+			assert.Nil(t, err)
 
 			body, _ = ioutil.ReadAll(resp.Body)
-			c.Assert(body, DeepEquals, expected)
+			assert.Equal(t, body, expected)
 
 			done <- true
 		}()
@@ -107,7 +103,7 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 		req.TransferEncoding = []string{"chunked"}
 		r, err := client.Do(req)
 		r.Body.Close()
-		c.Assert(err, IsNil)
+		assert.Nil(t, err)
 
 		<-done
 
@@ -117,14 +113,14 @@ func (s *HttpServerSuite) TestPubSub(c *C) {
 		// in chunks as they arrive.
 		resp, err = http.Get(server.URL + "/streams/" + uuid)
 		defer resp.Body.Close()
-		c.Assert(err, IsNil)
+		assert.Nil(t, err)
 
 		body, _ = ioutil.ReadAll(resp.Body)
-		c.Assert(body, DeepEquals, expected)
+		assert.Equal(t, body, expected)
 	}
 }
 
-func (s *HttpServerSuite) TestPubSubSSE(c *C) {
+func TestPubSubSSE(t *testing.T) {
 	server := httptest.NewServer(app())
 	defer server.Close()
 
@@ -153,7 +149,7 @@ func (s *HttpServerSuite) TestPubSubSSE(c *C) {
 		request, _ := http.NewRequest("PUT", url, nil)
 		resp, err := client.Do(request)
 		defer resp.Body.Close()
-		c.Assert(err, Equals, nil)
+		assert.Nil(t, err)
 
 		done := make(chan bool)
 
@@ -162,7 +158,7 @@ func (s *HttpServerSuite) TestPubSubSSE(c *C) {
 		req.TransferEncoding = []string{"chunked"}
 
 		r, err := client.Do(req)
-		c.Assert(err, Equals, nil)
+		assert.Nil(t, err)
 		r.Body.Close()
 
 		go func() {
@@ -174,13 +170,13 @@ func (s *HttpServerSuite) TestPubSubSSE(c *C) {
 			// -- waiting for publish to arrive
 			resp, err = client.Do(request)
 			defer resp.Body.Close()
-			c.Assert(err, IsNil)
+			assert.Nil(t, err)
 
 			body, _ := ioutil.ReadAll(resp.Body)
-			c.Assert(body, DeepEquals, []byte(testdata.output))
+			assert.Equal(t, body, []byte(testdata.output))
 
 			if len(body) == 0 {
-				c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
+				assert.Equal(t, resp.StatusCode, http.StatusNoContent)
 			}
 
 			done <- true
@@ -190,7 +186,7 @@ func (s *HttpServerSuite) TestPubSubSSE(c *C) {
 	}
 }
 
-func (s *HttpServerSuite) TestPut(c *C) {
+func TestPut(t *testing.T) {
 	server := httptest.NewServer(app())
 	defer server.Close()
 
@@ -201,14 +197,14 @@ func (s *HttpServerSuite) TestPut(c *C) {
 	request, _ := http.NewRequest("PUT", server.URL+"/streams/1/2/3", nil)
 	resp, err := client.Do(request)
 	defer resp.Body.Close()
-	c.Assert(err, Equals, nil)
-	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
+	assert.Nil(t, err)
+	assert.Equal(t, resp.StatusCode, http.StatusCreated)
 
 	registrar := broker.NewRedisRegistrar()
-	c.Assert(registrar.IsRegistered("1/2/3"), Equals, true)
+	assert.True(t, registrar.IsRegistered("1/2/3"))
 }
 
-func (s *HttpServerSuite) TestSubGoneWithBackend(c *C) {
+func TestSubGoneWithBackend(t *testing.T) {
 	uuid, _ := util.NewUUID()
 
 	storage, get, _ := fileServer(uuid)
@@ -226,13 +222,13 @@ func (s *HttpServerSuite) TestSubGoneWithBackend(c *C) {
 
 	resp, err := http.Get(server.URL + "/streams/" + uuid)
 	defer resp.Body.Close()
-	c.Assert(err, IsNil)
+	assert.Nil(t, err)
 
 	body, _ := ioutil.ReadAll(resp.Body)
-	c.Assert(body, DeepEquals, []byte("hello world"))
+	assert.Equal(t, body, []byte("hello world"))
 }
 
-func (s *HttpServerSuite) TestPutWithBackend(c *C) {
+func TestPutWithBackend(t *testing.T) {
 	uuid, _ := util.NewUUID()
 
 	storage, _, put := fileServer(uuid)
@@ -257,12 +253,12 @@ func (s *HttpServerSuite) TestPutWithBackend(c *C) {
 	request.TransferEncoding = []string{"chunked"}
 	resp, err := client.Do(request)
 	defer resp.Body.Close()
-	c.Assert(err, Equals, nil)
-	c.Assert(resp.StatusCode, Equals, 200)
-	c.Assert(<-put, DeepEquals, []byte("hello world"))
+	assert.Nil(t, err)
+	assert.Equal(t, resp.StatusCode, 200)
+	assert.Equal(t, <-put, []byte("hello world"))
 }
 
-func (s *HttpServerSuite) TestAuthentication(c *C) {
+func TestAuthentication(t *testing.T) {
 	*util.Creds = "u:pass1|u:pass2"
 	defer func() {
 		*util.Creds = ""
@@ -293,8 +289,8 @@ func (s *HttpServerSuite) TestAuthentication(c *C) {
 			}
 			resp, err := client.Do(request)
 			defer resp.Body.Close()
-			c.Assert(err, Equals, nil)
-			c.Assert(resp.Status, Equals, "401 Unauthorized")
+			assert.Nil(t, err)
+			assert.Equal(t, resp.Status, "401 Unauthorized")
 		}
 	}
 
@@ -306,8 +302,8 @@ func (s *HttpServerSuite) TestAuthentication(c *C) {
 			request.SetBasicAuth("u", token)
 			resp, err := client.Do(request)
 			defer resp.Body.Close()
-			c.Assert(err, Equals, nil)
-			c.Assert(resp.StatusCode, Equals, status[method])
+			assert.Nil(t, err)
+			assert.Equal(t, resp.StatusCode, status[method])
 		}
 	}
 }

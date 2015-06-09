@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/heroku/busl/Godeps/_workspace/src/github.com/stretchr/testify/assert"
 	"github.com/heroku/busl/util"
 )
 
@@ -19,14 +20,13 @@ func setup() (string, string) {
 	get, err := url.Parse(os.Getenv("TEST_GET_URL"))
 
 	if err != nil {
-		fmt.Printf("setup: err = %v", err)
 		return "", ""
 	}
 
 	return put.RequestURI()[1:], get.RequestURI()[1:]
 }
 
-func ExampleURLResolution() {
+func TestURLResolution(t *testing.T) {
 	*util.StorageBaseURL = "https://bucket.s3.amazonaws.com"
 	defer func() {
 		*util.StorageBaseURL = ""
@@ -58,10 +58,7 @@ func TestPutConnRefused(t *testing.T) {
 	}()
 
 	err := Put("1/2/3", nil)
-
-	if err == nil {
-		t.Fatalf("Expected err got nil")
-	}
+	assert.Error(t, err)
 }
 
 func TestGetConnRefused(t *testing.T) {
@@ -71,10 +68,7 @@ func TestGetConnRefused(t *testing.T) {
 	}()
 
 	_, err := Get("1/2/3", 0)
-
-	if err == nil {
-		t.Fatalf("Expected err got nil")
-	}
+	assert.Error(t, err)
 }
 
 func TestPutWithoutBaseURL(t *testing.T) {
@@ -84,10 +78,7 @@ func TestPutWithoutBaseURL(t *testing.T) {
 	}()
 
 	err := Put("1/2/3", nil)
-
-	if err != ErrNoStorage {
-		t.Fatalf("Expected ErrNoStorage, got %v", err)
-	}
+	assert.Equal(t, err, ErrNoStorage)
 }
 
 func TestGetWithoutBaseURL(t *testing.T) {
@@ -97,10 +88,7 @@ func TestGetWithoutBaseURL(t *testing.T) {
 	}()
 
 	_, err := Get("1/2/3", 0)
-
-	if err != ErrNoStorage {
-		t.Fatalf("Expected ErrNoStorage, got %v", err)
-	}
+	assert.Equal(t, err, ErrNoStorage)
 }
 
 func TestPut(t *testing.T) {
@@ -111,10 +99,7 @@ func TestPut(t *testing.T) {
 
 	reader := strings.NewReader("hello")
 	err := Put(requestURI, reader)
-
-	if err != nil {
-		t.Fatalf("Expected err == nil, got %v", err)
-	}
+	assert.Error(t, err)
 }
 
 func TestGet(t *testing.T) {
@@ -138,14 +123,8 @@ func TestGet(t *testing.T) {
 		}
 
 		bytes, err := ioutil.ReadAll(r)
-
-		if err != nil {
-			t.Fatalf("GET Error: %s", err.Error())
-		}
-
-		if actual := string(bytes); expected != actual {
-			t.Fatalf("GetWithOffset(..., %d) %v != %v", offset, expected, actual)
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, expected, string(bytes))
 	}
 }
 
