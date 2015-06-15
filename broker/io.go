@@ -28,6 +28,7 @@ func (w *writer) Close() error {
 	defer conn.Close()
 
 	conn.Send("MULTI")
+	conn.Send("EXPIRE", w.channel.id(), redisKeyExpire)
 	conn.Send("SETEX", w.channel.doneId(), redisChannelExpire, []byte{1})
 	conn.Send("PUBLISH", w.channel.killId(), 1)
 	_, err := conn.Do("EXEC")
