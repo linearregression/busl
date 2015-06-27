@@ -16,7 +16,7 @@ var (
 	redisServer        *url.URL
 	redisPool          *redis.Pool
 	redisKeyExpire     = 60 // redis uses seconds for EXPIRE
-	redisChannelExpire = redisKeyExpire * 5
+	redisChannelExpire = redisKeyExpire * 60
 )
 
 func init() {
