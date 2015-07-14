@@ -13,9 +13,6 @@
   "repository": "http://github.com/heroku/busl",
   "logo": "https://i.cloudup.com/WSKggRp4ZX.svg",
   "scripts": {},
-  "env": {
-    "BUILDPACK_URL": "https://github.com/heroku/heroku-buildpack-go"
-  },
   "addons": [
     "redistogo"
   ]
