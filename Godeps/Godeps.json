@@ -7,8 +7,8 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/braintree/manners",
-			"Comment": "0.3.1-2-g5280e25",
-			"Rev": "5280e250f2795914acbeb2bf3b55dd5a2d1fba52"
+			"Comment": "0.4.0-11-g0cd5a1d",
+			"Rev": "0cd5a1d1e1ea392cf99fb8c3a1780955f3eb4a14"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
