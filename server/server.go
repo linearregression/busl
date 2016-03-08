@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/heroku/busl/Godeps/_workspace/src/github.com/braintree/manners"
@@ -80,6 +81,13 @@ func pub(w http.ResponseWriter, r *http.Request) {
 
 	if err == io.ErrUnexpectedEOF {
 		util.CountWithData("server.pub.read.eoferror", 1, "msg=\"%v\"", err.Error())
+		return
+	}
+
+	netErr, ok := err.(net.Error)
+	if ok && netErr.Timeout() {
+		util.CountWithData("server.pub.read.timeout", 1, "msg=\"%v\"", err.Error())
+		handleError(w, r, netErr)
 		return
 	}
 
