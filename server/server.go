@@ -18,8 +18,8 @@ var gracefulServer *manners.GracefulServer
 
 func init() {
 	gracefulServer = manners.NewServer()
-	gracefulServer.InnerServer.ReadTimeout = *util.HttpReadTimeout
-	gracefulServer.InnerServer.WriteTimeout = *util.HttpWriteTimeout
+	gracefulServer.ReadTimeout = *util.HttpReadTimeout
+	gracefulServer.WriteTimeout = *util.HttpWriteTimeout
 }
 
 func mkstream(w http.ResponseWriter, _ *http.Request) {
@@ -128,12 +128,14 @@ func app() http.Handler {
 	return logRequest(enforceHTTPS(r.ServeHTTP))
 }
 
+// Start starts the server instance
 func Start(port string, shutdown <-chan struct{}) {
 	log.Printf("http.start.port=%s\n", port)
-	http.Handle("/", app())
+	gracefulServer.Handler = app()
 	go listenForShutdown(shutdown)
 
-	if err := gracefulServer.ListenAndServe(":"+port, nil); err != nil {
+	gracefulServer.Addr = ":" + port
+	if err := gracefulServer.ListenAndServe(); err != nil {
 		log.Fatalf("server.server error=%v", err)
 	}
 }
@@ -142,6 +144,5 @@ func listenForShutdown(shutdown <-chan struct{}) {
 	log.Println("http.graceful.await")
 	<-shutdown
 	log.Println("http.graceful.shutdown")
-	gracefulServer.InnerServer.SetKeepAlivesEnabled(false) // TODO: Remove after merge of https://github.com/braintree/manners/pull/22
-	gracefulServer.Shutdown <- true
+	gracefulServer.Close()
 }

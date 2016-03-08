@@ -41,17 +41,17 @@ func auth(fn http.HandlerFunc) http.HandlerFunc {
 		return fn
 	}
 
-	if auth, err := authenticater.NewBasicAuthFromString(*util.Creds); err != nil {
+	auth, err := authenticater.NewBasicAuthFromString(*util.Creds)
+	if err != nil {
 		log.Fatalf("server.middleware error=%v", err)
 		return nil
-	} else {
-		return authenticater.WrapAuth(auth, fn)
 	}
+	return authenticater.WrapAuth(auth, fn)
 }
 
 func logRequest(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger := util.NewResponseLogger(w, requestId(r))
+		logger := util.NewResponseLogger(w, requestID(r))
 		fn(logger, r)
 		logger.WriteLog()
 	}
@@ -69,7 +69,7 @@ func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func requestId(r *http.Request) (id string) {
+func requestID(r *http.Request) (id string) {
 	if id = r.Header.Get("Request-Id"); id == "" {
 		id = r.Header.Get("X-Request-Id")
 	}

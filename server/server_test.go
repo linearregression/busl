@@ -26,8 +26,8 @@ func TestMkstream(t *testing.T) {
 }
 
 func Test410(t *testing.T) {
-	streamId, _ := util.NewUUID()
-	request, _ := http.NewRequest("GET", "/streams/"+streamId, nil)
+	streamID, _ := util.NewUUID()
+	request, _ := http.NewRequest("GET", "/streams/"+streamID, nil)
 	response := httptest.NewRecorder()
 
 	sub(response, request)
@@ -37,8 +37,8 @@ func Test410(t *testing.T) {
 }
 
 func TestPubNotRegistered(t *testing.T) {
-	streamId, _ := util.NewUUID()
-	request, _ := http.NewRequest("POST", "/streams/"+streamId, nil)
+	streamID, _ := util.NewUUID()
+	request, _ := http.NewRequest("POST", "/streams/"+streamID, nil)
 	request.TransferEncoding = []string{"chunked"}
 	response := httptest.NewRecorder()
 
