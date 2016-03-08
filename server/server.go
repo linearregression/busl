@@ -116,7 +116,17 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		handleError(w, r, err)
 		return
 	}
-	io.Copy(newWriteFlusher(w), rd)
+	_, err = io.Copy(newWriteFlusher(w), rd)
+
+	netErr, ok := err.(net.Error)
+	if ok && netErr.Timeout() {
+		util.CountWithData("server.sub.read.timeout", 1, "msg=\"%v\"", err.Error())
+		return
+	}
+
+	if err != nil {
+		rollbar.Error(rollbar.ERR, fmt.Errorf("unhandled error: %#v", err))
+	}
 }
 
 func app() http.Handler {
