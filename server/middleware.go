@@ -51,7 +51,7 @@ func auth(fn http.HandlerFunc) http.HandlerFunc {
 
 func logRequest(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger := util.NewResponseLogger(w, requestID(r))
+		logger := util.NewResponseLogger(w, r.URL.Path, r.UserAgent(), requestID(r))
 		fn(logger, r)
 		logger.WriteLog()
 	}
