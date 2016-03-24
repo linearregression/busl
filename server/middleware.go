@@ -51,7 +51,7 @@ func auth(fn http.HandlerFunc) http.HandlerFunc {
 
 func logRequest(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger := util.NewResponseLogger(w, r.URL.Path, r.UserAgent(), requestID(r))
+		logger := util.NewResponseLogger(r, w)
 		fn(logger, r)
 		logger.WriteLog()
 	}
@@ -67,24 +67,6 @@ func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		fn(w, r)
 	}
-}
-
-func requestID(r *http.Request) (id string) {
-	if id = r.Header.Get("Request-Id"); id == "" {
-		id = r.Header.Get("X-Request-Id")
-	}
-
-	if id == "" {
-		// In the event of a rare case where uuid
-		// generation fails, it's probably more
-		// desirable to continue as is with an empty
-		// request_id than to bubble the error up the
-		// stack.
-		uuid, _ := util.NewUUID()
-		id = string(uuid)
-	}
-
-	return id
 }
 
 func offset(r *http.Request) int64 {
