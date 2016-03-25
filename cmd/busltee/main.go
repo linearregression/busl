@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	flag "github.com/heroku/busl/Godeps/_workspace/src/github.com/ogier/pflag"
 	"github.com/heroku/busl/busltee"
+	flag "github.com/ogier/pflag"
 )
 
 func main() {

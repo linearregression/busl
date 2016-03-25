@@ -8,11 +8,11 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/heroku/busl/Godeps/_workspace/src/github.com/braintree/manners"
-	"github.com/heroku/busl/Godeps/_workspace/src/github.com/gorilla/mux"
-	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/rollbar"
+	"github.com/braintree/manners"
+	"github.com/gorilla/mux"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/util"
+	"github.com/heroku/rollbar"
 )
 
 var gracefulServer *manners.GracefulServer

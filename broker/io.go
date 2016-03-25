@@ -5,7 +5,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/heroku/busl/Godeps/_workspace/src/github.com/garyburd/redigo/redis"
+	"github.com/garyburd/redigo/redis"
 	"github.com/heroku/busl/util"
 )
 
