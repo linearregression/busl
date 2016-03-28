@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/heroku/busl/Godeps/_workspace/src/github.com/gorilla/mux"
-	"github.com/heroku/busl/Godeps/_workspace/src/github.com/heroku/authenticater"
+	"github.com/gorilla/mux"
+	"github.com/heroku/authenticater"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/sse"
 	"github.com/heroku/busl/storage"
