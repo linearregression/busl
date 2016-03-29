@@ -40,6 +40,7 @@ func parseFlags() (*busltee.Config, error) {
 	// Logging related flags
 	flag.StringVar(&conf.LogPrefix, "log-prefix", "", "log prefix")
 	flag.StringVar(&conf.LogFile, "log-file", "", "log file")
+	flag.StringVar(&conf.RequestID, "request-id", "", "request id")
 
 	if flag.Parse(); len(flag.Args()) < 2 {
 		return nil, errors.New("insufficient args")

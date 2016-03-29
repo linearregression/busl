@@ -109,6 +109,34 @@ func TestRun(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatalf("POST channel got no response")
 	}
+}
+
+func TestRequestID(t *testing.T) {
+	post := make(chan string, 1)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		post <- r.Header.Get("Request-ID")
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	config := &Config{
+		RequestID: "2469a9df-5a5a-4f16-af0f-ee75aa252d50",
+	}
+	if code := Run(server.URL, []string{"printf", "hello"}, config); code != 0 {
+		t.Fatalf("Expected exit code to be 0, got %d", code)
+	}
+
+	select {
+	case result := <-post:
+		if string(result) != config.RequestID {
+			t.Fatalf("Expected POST body to be `%s`, got %s", config.RequestID, result)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatalf("POST channel got no response")
+	}
 
 }
 
