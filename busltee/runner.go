@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+// Config holds the runner configuration
 type Config struct {
 	Insecure  bool
 	Timeout   float64
@@ -23,8 +24,10 @@ type Config struct {
 	Args      []string
 	LogPrefix string
 	LogFile   string
+	RequestID string
 }
 
+// Run creates the stdin listener and forwards logs to URI
 func Run(url string, args []string, conf *Config) (exitCode int) {
 	defer monitor("busltee.busltee", time.Now())
 
@@ -94,6 +97,10 @@ func streamNoRetry(url string, stdin io.Reader, conf *Config) error {
 	// it from being closed prematurely (and thus allowing writes
 	// on the other end of the pipe to work).
 	req, err := http.NewRequest("POST", url, ioutil.NopCloser(stdin))
+	if conf.RequestID != "" {
+		req.Header.Set("Request-Id", conf.RequestID)
+	}
+
 	if err != nil {
 		return err
 	}
