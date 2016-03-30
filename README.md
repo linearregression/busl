@@ -53,7 +53,7 @@ $ godep go test ./...
 to run the server:
 
 ```sh
-$ godep go run main.go
+$ godep go run cmd/busl/main.go
 ```
 
 ## deploy
