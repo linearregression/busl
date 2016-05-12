@@ -1,40 +1,37 @@
-package util
+package server
 
 import (
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/heroku/busl/util"
 )
 
-// NewResponseLogger creates a new logger for HTTP responses
-func NewResponseLogger(r *http.Request, w http.ResponseWriter) *ResponseLogger {
-	return &ResponseLogger{ResponseWriter: w, request: r, status: http.StatusOK}
+func newResponseLogger(r *http.Request, w http.ResponseWriter) *responseLogger {
+	return &responseLogger{ResponseWriter: w, request: r, status: http.StatusOK}
 }
 
-// ResponseLogger is a logger for HTTP responses
-type ResponseLogger struct {
+type responseLogger struct {
 	http.ResponseWriter
 	request *http.Request
 	status  int
 }
 
-// WriteHeader writes a new header to the response
-func (l *ResponseLogger) WriteHeader(s int) {
+func (l *responseLogger) WriteHeader(s int) {
 	l.ResponseWriter.WriteHeader(s)
 	l.status = s
 }
 
-// CloseNotify returns a chan notifying when the connection is being closed
-func (l *ResponseLogger) CloseNotify() <-chan bool {
+func (l *responseLogger) CloseNotify() <-chan bool {
 	return l.ResponseWriter.(http.CloseNotifier).CloseNotify()
 }
 
-// Flush flushes the response
-func (l *ResponseLogger) Flush() {
+func (l *responseLogger) Flush() {
 	l.ResponseWriter.(http.Flusher).Flush()
 }
 
-func (l *ResponseLogger) requestID() (id string) {
+func (l *responseLogger) requestID() (id string) {
 	if id = l.request.Header.Get("Request-Id"); id == "" {
 		id = l.request.Header.Get("X-Request-Id")
 	}
@@ -45,15 +42,14 @@ func (l *ResponseLogger) requestID() (id string) {
 		// desirable to continue as is with an empty
 		// request_id than to bubble the error up the
 		// stack.
-		uuid, _ := NewUUID()
+		uuid, _ := util.NewUUID()
 		id = string(uuid)
 	}
 
 	return id
 }
 
-// WriteLog logs the response
-func (l *ResponseLogger) WriteLog() {
+func (l *responseLogger) WriteLog() {
 	maskedStatus := strconv.Itoa(l.status/100) + "xx"
 	log.Printf("count#http.status.%s=1 request_id=%s", maskedStatus, l.requestID())
 	log.Printf("method=%s path=\"%s\" host=\"%s\" fwd=\"%s\" status=%d user_agent=\"%s\" request_id=%s",
