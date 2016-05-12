@@ -13,6 +13,7 @@ import (
 // Number of times we should retry a failed HTTP request.
 const retries = 3
 
+// storage errors
 var (
 	ErrNoStorage = errors.New("No storage defined")
 	ErrNotFound  = errors.New("HTTP 404")
@@ -20,7 +21,7 @@ var (
 	Err5xx       = errors.New("HTTP 5xx")
 )
 
-// Stores the given reader onto the underlying blob storage
+// Put stores the given reader onto the underlying blob storage
 // with the given requestURI. The requestURI is resolved
 // using the `STORAGE_BASE_URL` as the base.
 //
@@ -68,7 +69,7 @@ func put(requestURI string, reader io.Reader) error {
 	return err
 }
 
-// Grabs the data stored in requestURI.
+// Get grabs the data stored in requestURI.
 // The requestURI is resolved using the `STORAGE_BASE_URL` as the base.
 //
 // Retries transient errors `retries` number of times.

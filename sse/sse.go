@@ -16,6 +16,7 @@ type encoder struct {
 	offset int64     // offset for Seek purposes
 }
 
+// NewEncoder creates a new sse encoder
 func NewEncoder(r io.Reader) io.Reader {
 	return &encoder{reader: r}
 }

@@ -13,8 +13,12 @@ type writer struct {
 	channel channel
 }
 
-var ErrNotRegistered = errors.New("Channel is not registered.")
+// known errors
+var (
+	ErrNotRegistered = errors.New("Channel is not registered.")
+)
 
+// NewWriter creates a new redis channel writer
 func NewWriter(key string) (io.WriteCloser, error) {
 	if !NewRedisRegistrar().IsRegistered(key) {
 		return nil, ErrNotRegistered
@@ -29,8 +33,8 @@ func (w *writer) Close() error {
 
 	conn.Send("MULTI")
 	conn.Send("EXPIRE", w.channel.id(), redisKeyExpire)
-	conn.Send("SETEX", w.channel.doneId(), redisChannelExpire, []byte{1})
-	conn.Send("PUBLISH", w.channel.killId(), 1)
+	conn.Send("SETEX", w.channel.doneID(), redisChannelExpire, []byte{1})
+	conn.Send("PUBLISH", w.channel.killID(), 1)
 	_, err := conn.Do("EXEC")
 	return err
 }
@@ -42,7 +46,7 @@ func (w *writer) Write(p []byte) (int, error) {
 	conn.Send("MULTI")
 	conn.Send("APPEND", w.channel.id(), p)
 	conn.Send("EXPIRE", w.channel.id(), redisChannelExpire)
-	conn.Send("DEL", w.channel.doneId())
+	conn.Send("DEL", w.channel.doneID())
 	conn.Send("PUBLISH", w.channel.id(), 1)
 
 	_, err := conn.Do("EXEC")
@@ -59,6 +63,7 @@ type reader struct {
 	buffered bool
 }
 
+// NewReader creates a new redis channel reader
 func NewReader(key string) (io.ReadCloser, error) {
 	if !NewRedisRegistrar().IsRegistered(key) {
 		return nil, ErrNotRegistered
@@ -66,7 +71,7 @@ func NewReader(key string) (io.ReadCloser, error) {
 
 	psc := redis.PubSubConn{redisPool.Get()}
 	channel := channel(key)
-	psc.PSubscribe(channel.wildcardId())
+	psc.PSubscribe(channel.wildcardID())
 
 	rd := &reader{
 		channel: channel,
@@ -144,7 +149,7 @@ func (r *reader) replay(p []byte) (n int, err error) {
 func (r *reader) read(msg redis.PMessage, p []byte) (n int, err error) {
 	var buf []byte
 
-	if msg.Channel == r.channel.killId() || msg.Channel == r.channel.id() {
+	if msg.Channel == r.channel.killID() || msg.Channel == r.channel.id() {
 		buf, err = r.fetch(len(p))
 
 		if n = len(buf); n > 0 {
@@ -153,7 +158,7 @@ func (r *reader) read(msg redis.PMessage, p []byte) (n int, err error) {
 		}
 	}
 
-	if msg.Channel == r.channel.killId() || err == io.EOF {
+	if msg.Channel == r.channel.killID() || err == io.EOF {
 		util.Count("RedisBroker.redisSubscribe.Channel.kill")
 		r.Close()
 		err = io.EOF
@@ -171,7 +176,7 @@ func (r *reader) fetch(length int) ([]byte, error) {
 	conn.Send("MULTI")
 	conn.Send("GETRANGE", r.channel.id(), start, end-1)
 	conn.Send("STRLEN", r.channel.id())
-	conn.Send("EXISTS", r.channel.doneId())
+	conn.Send("EXISTS", r.channel.doneID())
 	conn.Send("EXPIRE", r.channel.id(), redisChannelExpire)
 
 	list, err := redis.Values(conn.Do("EXEC"))
@@ -199,7 +204,7 @@ func (r *reader) Close() error {
 	return r.psc.Close()
 }
 
-func ReaderDone(rd io.Reader) bool {
+func readerDone(rd io.Reader) bool {
 	r, ok := rd.(*reader)
 	if !ok {
 		return false
@@ -212,12 +217,13 @@ func ReaderDone(rd io.Reader) bool {
 	conn := redisPool.Get()
 	defer conn.Close()
 
-	done, _ := redis.Bool(conn.Do("EXISTS", r.channel.doneId()))
+	done, _ := redis.Bool(conn.Do("EXISTS", r.channel.doneID()))
 	return done
 }
 
+// NoContent returns whether the channel already has content pushed or not
 func NoContent(rd io.Reader, offset int64) bool {
-	if !ReaderDone(rd) {
+	if !readerDone(rd) {
 		return false
 	}
 
@@ -232,6 +238,7 @@ func NoContent(rd io.Reader, offset int64) bool {
 	return offset > (strlen - 1)
 }
 
+// RenewExpiry renews the channel expiration
 func RenewExpiry(rd io.Reader) {
 	r, ok := rd.(*reader)
 	if !ok {
