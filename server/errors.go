@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/heroku/busl/assets"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/storage"
 	"github.com/heroku/busl/util"
@@ -34,7 +33,7 @@ func handleError(w http.ResponseWriter, r *http.Request, err error) {
 	case broker.ErrNotRegistered, storage.ErrNoStorage, storage.ErrNotFound:
 		message := "Channel is not registered."
 		if r.Header.Get("Accept") == "text/ascii; version=feral" {
-			message = assets.asciiGone
+			message = asciiGone
 		}
 
 		http.Error(w, message, http.StatusNotFound)
