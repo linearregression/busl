@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +11,7 @@ import (
 	"time"
 
 	"github.com/heroku/busl/broker"
-	"github.com/heroku/busl/util"
+	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,12 +29,12 @@ func TestMkstream(t *testing.T) {
 	baseServer.mkstream(response, request)
 
 	assert.Equal(t, response.Code, 200)
-	assert.Len(t, response.Body.String(), 32)
+	assert.Len(t, response.Body.String(), 36)
 }
 
 func Test410(t *testing.T) {
-	streamID, _ := util.NewUUID()
-	request, _ := http.NewRequest("GET", "/streams/"+streamID, nil)
+	streamID := uuid.NewV4()
+	request, _ := http.NewRequest("GET", fmt.Sprintf("/streams/%s", streamID), nil)
 	response := httptest.NewRecorder()
 
 	baseServer.sub(response, request)
@@ -43,8 +44,8 @@ func Test410(t *testing.T) {
 }
 
 func TestPubNotRegistered(t *testing.T) {
-	streamID, _ := util.NewUUID()
-	request, _ := http.NewRequest("POST", "/streams/"+streamID, nil)
+	streamID := uuid.NewV4()
+	request, _ := http.NewRequest("POST", fmt.Sprintf("/streams/%s", streamID), nil)
 	request.TransferEncoding = []string{"chunked"}
 	response := httptest.NewRecorder()
 
@@ -84,7 +85,7 @@ func TestPubSub(t *testing.T) {
 
 		// uuid extracted
 		uuid := string(body)
-		assert.Len(t, uuid, 32)
+		assert.Len(t, uuid, 36)
 
 		done := make(chan bool)
 
@@ -148,8 +149,8 @@ func TestPubSubSSE(t *testing.T) {
 	client := &http.Client{Transport: &http.Transport{}}
 
 	for _, testdata := range data {
-		uuid, _ := util.NewUUID()
-		url := server.URL + "/streams/" + uuid
+		uuid := uuid.NewV4()
+		url := fmt.Sprintf("%s/streams/%s", server.URL, uuid)
 
 		// curl -XPUT <url>/streams/<uuid>
 		request, _ := http.NewRequest("PUT", url, nil)
@@ -211,9 +212,9 @@ func TestPut(t *testing.T) {
 }
 
 func TestSubGoneWithBackend(t *testing.T) {
-	uuid, _ := util.NewUUID()
+	uuid := uuid.NewV4()
 
-	storage, get, _ := fileServer(uuid)
+	storage, get, _ := fileServer(uuid.String())
 	defer storage.Close()
 
 	baseServer.StorageBaseURL = storage.URL
@@ -226,7 +227,7 @@ func TestSubGoneWithBackend(t *testing.T) {
 
 	get <- []byte("hello world")
 
-	resp, err := http.Get(server.URL + "/streams/" + uuid)
+	resp, err := http.Get(fmt.Sprintf("%s/streams/%s", server.URL, uuid))
 	defer resp.Body.Close()
 	assert.Nil(t, err)
 
@@ -235,9 +236,9 @@ func TestSubGoneWithBackend(t *testing.T) {
 }
 
 func TestPutWithBackend(t *testing.T) {
-	uuid, _ := util.NewUUID()
+	uuid := uuid.NewV4()
 
-	storage, _, put := fileServer(uuid)
+	storage, _, put := fileServer(uuid.String())
 	defer storage.Close()
 
 	baseServer.StorageBaseURL = storage.URL
@@ -252,10 +253,10 @@ func TestPutWithBackend(t *testing.T) {
 	client := &http.Client{Transport: transport}
 
 	registrar := broker.NewRedisRegistrar()
-	registrar.Register(uuid)
+	registrar.Register(uuid.String())
 
 	// uuid = curl -XPUT <url>/streams/1/2/3
-	request, _ := http.NewRequest("POST", server.URL+"/streams/"+uuid, bytes.NewReader([]byte("hello world")))
+	request, _ := http.NewRequest("POST", fmt.Sprintf("%s/streams/%s", server.URL, uuid), bytes.NewReader([]byte("hello world")))
 	request.TransferEncoding = []string{"chunked"}
 	resp, err := client.Do(request)
 	defer resp.Body.Close()

@@ -10,19 +10,13 @@ import (
 
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/logging"
-	"github.com/heroku/busl/util"
 	"github.com/heroku/rollbar"
+	"github.com/satori/go.uuid"
 )
 
 func (s *Server) mkstream(w http.ResponseWriter, _ *http.Request) {
 	registrar := broker.NewRedisRegistrar()
-	uuid, err := util.NewUUID()
-	if err != nil {
-		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
-		rollbar.Error(rollbar.ERR, fmt.Errorf("unable to create new uuid for stream: %#v", err))
-		logging.CountWithData("mkstream.create.fail", 1, "error=%s", err)
-		return
-	}
+	uuid := uuid.NewV4().String()
 
 	if err := registrar.Register(uuid); err != nil {
 		http.Error(w, "Unable to create stream. Please try again.", http.StatusServiceUnavailable)
@@ -53,7 +47,7 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) pub(w http.ResponseWriter, r *http.Request) {
-	if !util.StringInSlice(r.TransferEncoding, "chunked") {
+	if !hasEncoding(r.TransferEncoding, "chunked") {
 		http.Error(w, "A chunked Transfer-Encoding header is required.", http.StatusBadRequest)
 		return
 	}
@@ -118,4 +112,13 @@ func (s *Server) sub(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		rollbar.Error(rollbar.ERR, fmt.Errorf("unhandled error: %#v", err))
 	}
+}
+
+func hasEncoding(encodings []string, check string) bool {
+	for _, c := range encodings {
+		if c == check {
+			return true
+		}
+	}
+	return false
 }

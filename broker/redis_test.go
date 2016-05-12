@@ -3,13 +3,13 @@ package broker
 import (
 	"testing"
 
-	"github.com/heroku/busl/util"
+	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func newRegUUID() (*RedisRegistrar, string) {
 	reg := NewRedisRegistrar()
-	uuid, _ := util.NewUUID()
+	uuid := uuid.NewV4().String()
 
 	return reg, uuid
 }

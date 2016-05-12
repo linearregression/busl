@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/heroku/busl",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v60",
+	"GodepVersion": "v63",
 	"Packages": [
 		"./..."
 	],
@@ -10,6 +10,10 @@
 			"ImportPath": "github.com/braintree/manners",
 			"Comment": "0.4.0-11-g0cd5a1d",
 			"Rev": "0cd5a1d1e1ea392cf99fb8c3a1780955f3eb4a14"
+		},
+		{
+			"ImportPath": "github.com/davecgh/go-spew/spew",
+			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/internal",
@@ -40,6 +44,15 @@
 			"ImportPath": "github.com/ogier/pflag",
 			"Comment": "v0.0.1-2-g2e6f5f3",
 			"Rev": "2e6f5f3f0c40ab9cb459742296f6a2aaab1fd5dc"
+		},
+		{
+			"ImportPath": "github.com/pmezard/go-difflib/difflib",
+			"Rev": "792786c7400a136282c1664665ae0a8db921c6c2"
+		},
+		{
+			"ImportPath": "github.com/satori/go.uuid",
+			"Comment": "v1.0.0",
+			"Rev": "f9ab0dce87d815821e221626b772e3475a0d2749"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",

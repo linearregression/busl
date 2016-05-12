@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/heroku/busl/util"
+	"github.com/satori/go.uuid"
 )
 
 func newResponseLogger(r *http.Request, w http.ResponseWriter) *responseLogger {
@@ -35,15 +35,8 @@ func (l *responseLogger) requestID() (id string) {
 	if id = l.request.Header.Get("Request-Id"); id == "" {
 		id = l.request.Header.Get("X-Request-Id")
 	}
-
 	if id == "" {
-		// In the event of a rare case where uuid
-		// generation fails, it's probably more
-		// desirable to continue as is with an empty
-		// request_id than to bubble the error up the
-		// stack.
-		uuid, _ := util.NewUUID()
-		id = string(uuid)
+		id = uuid.NewV4().String()
 	}
 
 	return id

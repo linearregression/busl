@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/heroku/busl/util"
+	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func setup() string {
 	registrar := NewRedisRegistrar()
-	uuid, _ := util.NewUUID()
+	uuid := uuid.NewV4().String()
 	registrar.Register(uuid)
 
 	return uuid
@@ -23,7 +23,7 @@ func setup() string {
 
 func newReaderWriter() (io.ReadCloser, io.WriteCloser) {
 	registrar := NewRedisRegistrar()
-	uuid, _ := util.NewUUID()
+	uuid := uuid.NewV4().String()
 	registrar.Register(uuid)
 	r, _ := NewReader(uuid)
 	w, _ := NewWriter(uuid)
