@@ -13,6 +13,8 @@ import (
 	"github.com/heroku/busl/logging"
 	"github.com/heroku/busl/server"
 	"github.com/heroku/rollbar"
+
+	_ "github.com/joho/godotenv/autoload"
 )
 
 // global cli options

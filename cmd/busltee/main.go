@@ -8,6 +8,8 @@ import (
 	"github.com/heroku/busl/logging"
 	"github.com/heroku/busl/publisher"
 	"github.com/heroku/rollbar"
+
+	_ "github.com/joho/godotenv/autoload"
 	flag "github.com/ogier/pflag"
 )
 

@@ -37,7 +37,6 @@ and then:
 ```sh
 $ godep go install
 $ cp .sample.env .env
-$ export $(cat .env)
 ```
 
 ## test
