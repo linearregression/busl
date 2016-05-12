@@ -12,7 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/heroku/authenticater"
 	"github.com/heroku/busl/broker"
-	"github.com/heroku/busl/sse"
+	"github.com/heroku/busl/encoders"
 	"github.com/heroku/busl/storage"
 	"github.com/heroku/busl/util"
 )
@@ -143,7 +143,7 @@ func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 
-		encoder := sse.NewEncoder(rd)
+		encoder := encoders.NewSSEEncoder(rd)
 		encoder.(io.Seeker).Seek(offset(r), 0)
 
 		rd = ioutil.NopCloser(encoder)
