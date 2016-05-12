@@ -1,4 +1,4 @@
-package sse
+package encoders
 
 import (
 	"io"
@@ -31,7 +31,7 @@ var (
 func TestNoNewline(t *testing.T) {
 	for _, data := range testdata {
 		r := strings.NewReader(data.input)
-		enc := NewEncoder(r)
+		enc := NewSSEEncoder(r)
 		enc.(io.Seeker).Seek(data.offset, 0)
 		assert.Equal(t, data.output, readstring(enc))
 	}
@@ -47,7 +47,7 @@ func TestNonSeekableReader(t *testing.T) {
 	// Use LimitReader to hide the Seeker interface
 	lr := io.LimitReader(r, 11)
 
-	enc := NewEncoder(lr)
+	enc := NewSSEEncoder(lr)
 	enc.(io.Seeker).Seek(10, 0)
 
 	// `id` should be 11 even though the underlying
