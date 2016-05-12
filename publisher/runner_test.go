@@ -1,4 +1,4 @@
-package busltee
+package publisher
 
 import (
 	"bytes"

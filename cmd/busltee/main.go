@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/heroku/busl/busltee"
+	"github.com/heroku/busl/publisher"
 	flag "github.com/ogier/pflag"
 )
 
@@ -16,10 +16,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	busltee.OpenLogs(conf.LogFile, conf.LogPrefix)
-	defer busltee.CloseLogs()
+	publisher.OpenLogs(conf.LogFile, conf.LogPrefix)
+	defer publisher.CloseLogs()
 
-	if exitCode := busltee.Run(conf.URL, conf.Args, conf); exitCode != 0 {
+	if exitCode := publisher.Run(conf.URL, conf.Args, conf); exitCode != 0 {
 		os.Exit(exitCode)
 	}
 }
@@ -29,8 +29,8 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-func parseFlags() (*busltee.Config, error) {
-	conf := &busltee.Config{}
+func parseFlags() (*publisher.Config, error) {
+	conf := &publisher.Config{}
 
 	// Connection related flags
 	flag.BoolVarP(&conf.Insecure, "insecure", "k", false, "allows insecure SSL connections")
