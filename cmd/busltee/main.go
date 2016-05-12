@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/heroku/busl/logging"
 	"github.com/heroku/busl/publisher"
 	"github.com/heroku/rollbar"
 	flag "github.com/ogier/pflag"
@@ -17,6 +18,8 @@ var (
 )
 
 func main() {
+	logging.Configure()
+
 	conf, err := parseFlags()
 	if err != nil {
 		usage()

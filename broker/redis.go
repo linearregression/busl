@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/heroku/busl/util"
+	"github.com/heroku/busl/logging"
 )
 
 var (
@@ -100,7 +100,7 @@ func (rr *RedisRegistrar) Register(channelName string) (err error) {
 
 	_, err = conn.Do("SETEX", channel.id(), redisChannelExpire, make([]byte, 0))
 	if err != nil {
-		util.CountWithData("RedisRegistrar.Register.error", 1, "error=%s", err)
+		logging.CountWithData("RedisRegistrar.Register.error", 1, "error=%s", err)
 		return
 	}
 	return
@@ -115,7 +115,7 @@ func (rr *RedisRegistrar) IsRegistered(channelName string) (registered bool) {
 
 	exists, err := redis.Bool(conn.Do("EXISTS", channel.id()))
 	if err != nil {
-		util.CountWithData("RedisRegistrar.IsRegistered.error", 1, "error=%s", err)
+		logging.CountWithData("RedisRegistrar.IsRegistered.error", 1, "error=%s", err)
 		return false
 	}
 

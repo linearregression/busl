@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/heroku/busl/logging"
 	"github.com/heroku/busl/server"
 	"github.com/heroku/rollbar"
 )
@@ -25,6 +26,8 @@ var (
 )
 
 func main() {
+	logging.Configure()
+
 	fmt.Println("Starting busl...")
 	conf, err := parseFlags()
 	if err != nil {

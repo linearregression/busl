@@ -1,4 +1,4 @@
-package util
+package logging
 
 import (
 	"fmt"
@@ -10,7 +10,8 @@ import (
 const prefix = "busl"
 const defaultDomain = "development"
 
-func init() {
+// Configure configures the default logger
+func Configure() {
 	log.SetPrefix(fmt.Sprintf("%s source=%s pid=%v ", prefix, source(), os.Getpid()))
 	log.SetFlags(0)
 }

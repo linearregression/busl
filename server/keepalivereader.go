@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/heroku/busl/broker"
-	"github.com/heroku/busl/util"
+	"github.com/heroku/busl/logging"
 )
 
 type payload struct {
@@ -62,12 +62,12 @@ func (r *keepAliveReader) Read(p []byte) (int, error) {
 		return payload.n, payload.err
 
 	case <-timer.C:
-		util.Count("server.sub.keepAlive")
+		logging.Count("server.sub.keepAlive")
 		broker.RenewExpiry(r.r)
 		return copy(p, r.packet), nil
 
 	case <-r.done:
-		util.Count("server.sub.clientClosed")
+		logging.Count("server.sub.clientClosed")
 		r.eof = true
 		return 0, io.EOF
 	}

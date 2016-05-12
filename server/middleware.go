@@ -13,8 +13,8 @@ import (
 	"github.com/heroku/authenticater"
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/encoders"
+	"github.com/heroku/busl/logging"
 	"github.com/heroku/busl/storage"
-	"github.com/heroku/busl/util"
 )
 
 func (s *Server) enforceHTTPS(fn http.HandlerFunc) http.HandlerFunc {
@@ -159,9 +159,9 @@ func (s *Server) newReader(w http.ResponseWriter, r *http.Request) (io.ReadClose
 func storeOutput(channel string, requestURI string, storageBase string) {
 	if buf, err := broker.Get(channel); err == nil {
 		if err := storage.Put(requestURI, storageBase, bytes.NewBuffer(buf)); err != nil {
-			util.CountWithData("server.storeOutput.put.error", 1, "err=%s", err.Error())
+			logging.CountWithData("server.storeOutput.put.error", 1, "err=%s", err.Error())
 		}
 	} else {
-		util.CountWithData("server.storeOutput.get.error", 1, "err=%s", err.Error())
+		logging.CountWithData("server.storeOutput.get.error", 1, "err=%s", err.Error())
 	}
 }

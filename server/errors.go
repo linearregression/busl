@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/heroku/busl/broker"
+	"github.com/heroku/busl/logging"
 	"github.com/heroku/busl/storage"
-	"github.com/heroku/busl/util"
 )
 
 var errNoContent = errors.New("No Content")
@@ -48,7 +48,7 @@ func handleError(w http.ResponseWriter, r *http.Request, err error) {
 		w.WriteHeader(http.StatusNoContent)
 
 	default:
-		util.CountWithData("server.handleError", 1, "error=%s", err.Error())
+		logging.CountWithData("server.handleError", 1, "error=%s", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }

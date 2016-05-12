@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/heroku/busl/util"
+	"github.com/heroku/busl/logging"
 )
 
 type writer struct {
@@ -115,7 +115,7 @@ func (r *reader) Read(p []byte) (n int, err error) {
 		return r.read(msg, p)
 	case redis.Subscription:
 	case error:
-		util.CountWithData("RedisBroker.redisSubscribe.ReceiveError", 1, "err=%s", msg)
+		logging.CountWithData("RedisBroker.redisSubscribe.ReceiveError", 1, "err=%s", msg)
 		err = msg
 		return
 	}
@@ -139,7 +139,7 @@ func (r *reader) replay(p []byte) (n int, err error) {
 		r.replayed = (!r.buffered || err == io.EOF)
 
 		if err == io.EOF {
-			util.Count("RedisBroker.replay.channelDone")
+			logging.Count("RedisBroker.replay.channelDone")
 		}
 	}
 
@@ -159,7 +159,7 @@ func (r *reader) read(msg redis.PMessage, p []byte) (n int, err error) {
 	}
 
 	if msg.Channel == r.channel.killID() || err == io.EOF {
-		util.Count("RedisBroker.redisSubscribe.Channel.kill")
+		logging.Count("RedisBroker.redisSubscribe.Channel.kill")
 		r.Close()
 		err = io.EOF
 	}

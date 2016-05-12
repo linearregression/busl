@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/heroku/busl/util"
+	"github.com/heroku/busl/logging"
 )
 
 // Number of times we should retry a failed HTTP request.
@@ -39,21 +39,21 @@ func Put(requestURI, baseURI string, reader io.Reader) (err error) {
 
 		// Break if we get nil / any error other than Err5xx
 		if err == nil {
-			util.Count("storage.put.success")
+			logging.Count("storage.put.success")
 			return nil
 		}
 
 		if err != Err5xx {
-			util.Count("storage.put.error")
+			logging.Count("storage.put.error")
 			return err
 		}
 
 		// Log the put retry
-		util.Count("storage.put.retry")
+		logging.Count("storage.put.retry")
 	}
 
 	// We've ran out of retries
-	util.Count("storage.put.maxretries")
+	logging.Count("storage.put.maxretries")
 	return err
 }
 
@@ -84,12 +84,12 @@ func Get(requestURI, baseURI string, offset int64) (rd io.ReadCloser, err error)
 		rd, err = get(requestURI, baseURI, offset)
 
 		if err == nil {
-			util.Count("storage.get.success")
+			logging.Count("storage.get.success")
 			return rd, nil
 		}
 
 		if err != Err5xx {
-			util.Count("storage.get.error")
+			logging.Count("storage.get.error")
 			return rd, err
 		}
 
@@ -99,11 +99,11 @@ func Get(requestURI, baseURI string, offset int64) (rd io.ReadCloser, err error)
 			rd.Close()
 		}
 
-		util.Count("storage.get.retry")
+		logging.Count("storage.get.retry")
 	}
 
 	// We've ran out of retries
-	util.Count("storage.get.maxretries")
+	logging.Count("storage.get.maxretries")
 	return rd, err
 }
 
