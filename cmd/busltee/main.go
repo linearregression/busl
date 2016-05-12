@@ -6,7 +6,14 @@ import (
 	"os"
 
 	"github.com/heroku/busl/publisher"
+	"github.com/heroku/rollbar"
 	flag "github.com/ogier/pflag"
+)
+
+// global cli options
+var (
+	RollbarEnvironment = flag.String("rollbarEnvironment", os.Getenv("ROLLBAR_ENVIRONMENT"), "Rollbar Enviornment for this application (development/staging/production).")
+	RollbarToken       = flag.String("rollbarToken", os.Getenv("ROLLBAR_TOKEN"), "Rollbar Token for sending issues to Rollbar.")
 )
 
 func main() {
@@ -14,6 +21,12 @@ func main() {
 	if err != nil {
 		usage()
 		os.Exit(1)
+	}
+
+	if *RollbarToken != "" {
+		rollbar.Token = *RollbarToken
+		rollbar.Environment = *RollbarEnvironment
+		rollbar.ServerRoot = "github.com/heroku/busl"
 	}
 
 	publisher.OpenLogs(conf.LogFile, conf.LogPrefix)

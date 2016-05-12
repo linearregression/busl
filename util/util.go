@@ -3,9 +3,6 @@ package util
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"log"
-	"os"
-	"os/signal"
 )
 
 // NewUUID creates a random UUID
@@ -30,19 +27,4 @@ func StringInSlice(content []string, check string) bool {
 		}
 	}
 	return false
-}
-
-// AwaitSignals sets up a channel to wait for an unix signal
-func AwaitSignals(signals ...os.Signal) <-chan struct{} {
-	s := make(chan os.Signal, 1)
-	signal.Notify(s, signals...)
-	log.Printf("signals.await signals=%v\n", signals)
-
-	received := make(chan struct{})
-	go func() {
-		log.Printf("signals.received signal=%v\n", <-s)
-		close(received)
-	}()
-
-	return received
 }

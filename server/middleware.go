@@ -17,8 +17,8 @@ import (
 	"github.com/heroku/busl/util"
 )
 
-func enforceHTTPS(fn http.HandlerFunc) http.HandlerFunc {
-	if !*util.EnforceHTTPS {
+func (s *Server) enforceHTTPS(fn http.HandlerFunc) http.HandlerFunc {
+	if !s.EnforceHTTPS {
 		return fn
 	}
 
@@ -36,12 +36,12 @@ func enforceHTTPS(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func auth(fn http.HandlerFunc) http.HandlerFunc {
-	if *util.Creds == "" {
+func (s *Server) auth(fn http.HandlerFunc) http.HandlerFunc {
+	if s.Credentials == "" {
 		return fn
 	}
 
-	auth, err := authenticater.NewBasicAuthFromString(*util.Creds)
+	auth, err := authenticater.NewBasicAuthFromString(s.Credentials)
 	if err != nil {
 		log.Fatalf("server.middleware error=%v", err)
 		return nil
@@ -57,7 +57,7 @@ func logRequest(fn http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
+func (s *Server) addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if origin := r.Header.Get("Origin"); origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -103,7 +103,7 @@ func key(r *http.Request) string {
 }
 
 // Returns a broker or blob reader.
-func newStorageReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
+func (s *Server) newStorageReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
 	// Get the offset from Last-Event-ID: or Range:
 	offset := offset(r)
 
@@ -111,7 +111,7 @@ func newStorageReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, er
 
 	// Not cached in the broker anymore, try the storage backend as a fallback.
 	if err == broker.ErrNotRegistered {
-		return storage.Get(requestURI(r), offset)
+		return storage.Get(requestURI(r), s.StorageBaseURL, offset)
 	}
 
 	if offset > 0 {
@@ -122,8 +122,8 @@ func newStorageReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, er
 	return rd, err
 }
 
-func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
-	rd, err := newStorageReader(w, r)
+func (s *Server) newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
+	rd, err := s.newStorageReader(w, r)
 	if err != nil {
 		if rd != nil {
 			rd.Close()
@@ -153,12 +153,12 @@ func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
 	}
 
 	done := w.(http.CloseNotifier).CloseNotify()
-	return newKeepAliveReader(rd, ack, *util.HeartbeatDuration, done), nil
+	return newKeepAliveReader(rd, ack, s.HeartbeatDuration, done), nil
 }
 
-func storeOutput(channel string, requestURI string) {
+func storeOutput(channel string, requestURI string, storageBase string) {
 	if buf, err := broker.Get(channel); err == nil {
-		if err := storage.Put(requestURI, bytes.NewBuffer(buf)); err != nil {
+		if err := storage.Put(requestURI, storageBase, bytes.NewBuffer(buf)); err != nil {
 			util.CountWithData("server.storeOutput.put.error", 1, "err=%s", err.Error())
 		}
 	} else {
