@@ -12,12 +12,29 @@ import (
 
 var errNoContent = errors.New("No Content")
 
+const asciiGone = `░░░░░░░░░░██░░░░░░░░░░██░░░░░░░░
+░░░░░░░░██░░██░░░░░░██░░██░░░░░░
+░░░░░░░░██░░░░██████░░░░██░░░░░░
+░░░░░░░░██░░░░░░░░░░░░░░██░░░░░░
+░░░░██████░░██░░░░░░██░░██████░░
+░░░░██░░░░░░██░░░░░░██░░░░░░██░░
+░░░░░░██░░░░░░░░██░░░░░░░░██░░░░
+░░░░░░░░██░░░░██░░██░░░░██░░░░░░
+░░░░░░░░░░██████████████░░░░░░░░
+░░░░░░░░░░██░░░░░░░░██░░░░░░░░░░
+░░░░░░░░██░░░░░░░░████░░░GONE░░░
+░░░░░░░░██░░░░░░░░██░░░░░░░░░░░░
+██░░░░██░░░░░░██░░██░░░░░░░░░░░░
+██░░░░██░░██░░██░░████░░░░░░░░░░
+██░░██░░░░██░░██░░██░░██░░░░░░░░
+░░░░██░░░░██░░██░░██░░██░░░░░░░░`
+
 func handleError(w http.ResponseWriter, r *http.Request, err error) {
 	switch err {
 	case broker.ErrNotRegistered, storage.ErrNoStorage, storage.ErrNotFound:
 		message := "Channel is not registered."
 		if r.Header.Get("Accept") == "text/ascii; version=feral" {
-			message = assets.HttpCatGone
+			message = assets.asciiGone
 		}
 
 		http.Error(w, message, http.StatusNotFound)

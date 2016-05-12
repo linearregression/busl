@@ -40,7 +40,7 @@ func TestURLResolution(t *testing.T) {
 	// https://bucket.s3.amazonaws.com/1/2/3?foo=bar <nil>
 }
 
-func ExampleEmptyStorageBaseURL() {
+func Example_empty_storage_base_url() {
 	*util.StorageBaseURL = ""
 	defer func() {
 		*util.StorageBaseURL = baseURL

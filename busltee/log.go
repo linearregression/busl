@@ -9,6 +9,7 @@ import (
 
 var out io.Writer
 
+// OpenLogs configures the log file
 func OpenLogs(logFile, logPrefix string) {
 	out = output(logFile)
 
@@ -17,6 +18,7 @@ func OpenLogs(logFile, logPrefix string) {
 	log.SetFlags(0)
 }
 
+// CloseLogs closes an open log file
 func CloseLogs() {
 	if f, ok := out.(io.Closer); ok {
 		f.Close()
@@ -29,7 +31,6 @@ func output(logFile string) io.Writer {
 	}
 	if file, err := os.OpenFile(logFile, os.O_RDWR|os.O_APPEND, 0660); err != nil {
 		return ioutil.Discard
-	} else {
-		return file
 	}
+	return file
 }

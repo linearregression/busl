@@ -133,7 +133,7 @@ func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
 
 	// For default requests, we use a null byte for sending
 	// the keepalive ack.
-	ack := util.GetNullByte()
+	ack := []byte{0}
 
 	if broker.NoContent(rd, offset(r)) {
 		return nil, errNoContent

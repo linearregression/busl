@@ -31,7 +31,7 @@ func newReaderWriter() (io.ReadCloser, io.WriteCloser) {
 	return r, w
 }
 
-func ExamplePubSub() {
+func Example_pub_sub() {
 	uuid := setup()
 
 	r, _ := NewReader(uuid)
@@ -62,7 +62,7 @@ func ExamplePubSub() {
 	// busl hello world
 }
 
-func ExampleFullReplay() {
+func Example_full_replay() {
 	uuid := setup()
 
 	w, _ := NewWriter(uuid)
@@ -116,7 +116,7 @@ func TestSeekBeyond(t *testing.T) {
 	assert.Equal(t, []byte{}, buf)
 }
 
-func ExampleHalfReplayHalfSubscribed() {
+func Example_half_replay_half_subscribed() {
 	uuid := setup()
 
 	w, _ := NewWriter(uuid)
@@ -173,7 +173,7 @@ func TestOverflowingBuffer(t *testing.T) {
 	assert.Equal(t, int64(32769), <-done)
 }
 
-func ExampleSubscribeConcurrent() {
+func Example_subscribe_concurrent() {
 	r, w := newReaderWriter()
 
 	pub := make(chan bool)
@@ -209,15 +209,15 @@ func TestRedisReadFromClosed(t *testing.T) {
 	assert.Equal(t, err, io.EOF)
 
 	// We'll get true here because r.closed is already set
-	assert.True(t, ReaderDone(r))
+	assert.True(t, readerDone(r))
 
-	// We should still get true here because doneId is set
+	// We should still get true here because doneID is set
 	r, _ = NewReader(string(r.(*reader).channel))
-	assert.True(t, ReaderDone(r))
+	assert.True(t, readerDone(r))
 
 	// Reader done on a regular io.Reader should return false
 	// and not panic
-	assert.False(t, ReaderDone(strings.NewReader("hello")))
+	assert.False(t, readerDone(strings.NewReader("hello")))
 
 	// NoContent should respond accordingly based on offset
 	assert.False(t, NoContent(r, 0))

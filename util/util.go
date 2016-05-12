@@ -3,12 +3,12 @@ package util
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
 )
 
+// NewUUID creates a random UUID
 func NewUUID() (string, error) {
 	uuid := make([]byte, 16)
 	n, err := rand.Read(uuid)
@@ -22,21 +22,9 @@ func NewUUID() (string, error) {
 	return hex.EncodeToString(uuid), nil
 }
 
-type NullByte []byte
-
-func GetNullByte() []byte {
-	return new(NullByte).Get()
-}
-
-func (nb NullByte) Get() []byte {
-	nb = []byte{0}
-	return nb
-}
-
-type StringSliceUtil []string
-
-func (s StringSliceUtil) Contains(check string) bool {
-	for _, c := range s {
+// StringInSlice checks a string array contains a check value
+func StringInSlice(content []string, check string) bool {
+	for _, c := range content {
 		if c == check {
 			return true
 		}
@@ -44,18 +32,7 @@ func (s StringSliceUtil) Contains(check string) bool {
 	return false
 }
 
-func Count(metric string) { CountMany(metric, 1) }
-
-func CountMany(metric string, count int64) { CountWithData(metric, count, "") }
-
-func CountWithData(metric string, count int64, extraData string, v ...interface{}) {
-	if extraData == "" {
-		log.Printf("count#%s=%d", metric, count)
-	} else {
-		log.Printf("count#%s=%d %s", metric, count, fmt.Sprintf(extraData, v...))
-	}
-}
-
+// AwaitSignals sets up a channel to wait for an unix signal
 func AwaitSignals(signals ...os.Signal) <-chan struct{} {
 	s := make(chan os.Signal, 1)
 	signal.Notify(s, signals...)
