@@ -7,19 +7,25 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/heroku/busl/broker"
 	"github.com/heroku/busl/util"
 	"github.com/stretchr/testify/assert"
 )
 
-var baseURL = *util.StorageBaseURL
+var baseServer = NewServer(&Config{
+	EnforceHTTPS:      false,
+	Credentials:       "",
+	HeartbeatDuration: time.Second,
+	StorageBaseURL:    "",
+})
 
 func TestMkstream(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/streams", nil)
 	response := httptest.NewRecorder()
 
-	mkstream(response, request)
+	baseServer.mkstream(response, request)
 
 	assert.Equal(t, response.Code, 200)
 	assert.Len(t, response.Body.String(), 32)
@@ -30,7 +36,7 @@ func Test410(t *testing.T) {
 	request, _ := http.NewRequest("GET", "/streams/"+streamID, nil)
 	response := httptest.NewRecorder()
 
-	sub(response, request)
+	baseServer.sub(response, request)
 
 	assert.Equal(t, response.Code, http.StatusNotFound)
 	assert.Equal(t, response.Body.String(), "Channel is not registered.\n")
@@ -42,7 +48,7 @@ func TestPubNotRegistered(t *testing.T) {
 	request.TransferEncoding = []string{"chunked"}
 	response := httptest.NewRecorder()
 
-	pub(response, request)
+	baseServer.pub(response, request)
 
 	assert.Equal(t, response.Code, http.StatusNotFound)
 }
@@ -51,14 +57,14 @@ func TestPubWithoutTransferEncoding(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/streams/1234", nil)
 	response := httptest.NewRecorder()
 
-	pub(response, request)
+	baseServer.pub(response, request)
 
 	assert.Equal(t, response.Code, http.StatusBadRequest)
 	assert.Equal(t, response.Body.String(), "A chunked Transfer-Encoding header is required.\n")
 }
 
 func TestPubSub(t *testing.T) {
-	server := httptest.NewServer(app())
+	server := httptest.NewServer(baseServer.router())
 	defer server.Close()
 
 	data := [][]byte{
@@ -121,7 +127,7 @@ func TestPubSub(t *testing.T) {
 }
 
 func TestPubSubSSE(t *testing.T) {
-	server := httptest.NewServer(app())
+	server := httptest.NewServer(baseServer.router())
 	defer server.Close()
 
 	data := []struct {
@@ -187,7 +193,7 @@ func TestPubSubSSE(t *testing.T) {
 }
 
 func TestPut(t *testing.T) {
-	server := httptest.NewServer(app())
+	server := httptest.NewServer(baseServer.router())
 	defer server.Close()
 
 	transport := &http.Transport{}
@@ -210,12 +216,12 @@ func TestSubGoneWithBackend(t *testing.T) {
 	storage, get, _ := fileServer(uuid)
 	defer storage.Close()
 
-	*util.StorageBaseURL = storage.URL
+	baseServer.StorageBaseURL = storage.URL
 	defer func() {
-		*util.StorageBaseURL = baseURL
+		baseServer.StorageBaseURL = ""
 	}()
 
-	server := httptest.NewServer(app())
+	server := httptest.NewServer(baseServer.router())
 	defer server.Close()
 
 	get <- []byte("hello world")
@@ -234,12 +240,12 @@ func TestPutWithBackend(t *testing.T) {
 	storage, _, put := fileServer(uuid)
 	defer storage.Close()
 
-	*util.StorageBaseURL = storage.URL
+	baseServer.StorageBaseURL = storage.URL
 	defer func() {
-		*util.StorageBaseURL = baseURL
+		baseServer.StorageBaseURL = ""
 	}()
 
-	server := httptest.NewServer(app())
+	server := httptest.NewServer(baseServer.router())
 	defer server.Close()
 
 	transport := &http.Transport{}
@@ -259,12 +265,12 @@ func TestPutWithBackend(t *testing.T) {
 }
 
 func TestAuthentication(t *testing.T) {
-	*util.Creds = "u:pass1|u:pass2"
+	baseServer.Credentials = "u:pass1|u:pass2"
 	defer func() {
-		*util.Creds = ""
+		baseServer.Credentials = ""
 	}()
 
-	server := httptest.NewServer(app())
+	server := httptest.NewServer(baseServer.router())
 	defer server.Close()
 
 	transport := &http.Transport{}

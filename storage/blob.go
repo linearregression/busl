@@ -33,9 +33,9 @@ var (
 //   requestURI := "1/2/3?X-Amz-Algorithm=...&..."
 //   err := storage.Put(requestURI, reader)
 //
-func Put(requestURI string, reader io.Reader) (err error) {
+func Put(requestURI, baseURI string, reader io.Reader) (err error) {
 	for i := retries; i > 0; i-- {
-		err = put(requestURI, reader)
+		err = put(requestURI, baseURI, reader)
 
 		// Break if we get nil / any error other than Err5xx
 		if err == nil {
@@ -57,8 +57,8 @@ func Put(requestURI string, reader io.Reader) (err error) {
 	return err
 }
 
-func put(requestURI string, reader io.Reader) error {
-	req, err := newRequest("PUT", requestURI, reader)
+func put(requestURI, baseURI string, reader io.Reader) error {
+	req, err := newRequest("PUT", requestURI, baseURI, reader)
 	if err != nil {
 		return err
 	}
@@ -79,9 +79,9 @@ func put(requestURI string, reader io.Reader) error {
 //   requestURI := "1/2/3?X-Amz-Algorithm=...&..."
 //   reader, err := storage.Get(requestURI, 0)
 //
-func Get(requestURI string, offset int64) (rd io.ReadCloser, err error) {
+func Get(requestURI, baseURI string, offset int64) (rd io.ReadCloser, err error) {
 	for i := retries; i > 0; i-- {
-		rd, err = get(requestURI, offset)
+		rd, err = get(requestURI, baseURI, offset)
 
 		if err == nil {
 			util.Count("storage.get.success")
@@ -107,8 +107,8 @@ func Get(requestURI string, offset int64) (rd io.ReadCloser, err error) {
 	return rd, err
 }
 
-func get(requestURI string, offset int64) (io.ReadCloser, error) {
-	req, err := newRequest("GET", requestURI, nil)
+func get(requestURI, baseURI string, offset int64) (io.ReadCloser, error) {
+	req, err := newRequest("GET", requestURI, baseURI, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -125,8 +125,8 @@ func get(requestURI string, offset int64) (io.ReadCloser, error) {
 
 // constructs an http.Request object, resolving requestURI
 // under `STORAGE_BASE_URL`.
-func newRequest(method, requestURI string, reader io.Reader) (*http.Request, error) {
-	u, err := absoluteURL(requestURI)
+func newRequest(method, requestURI, baseURI string, reader io.Reader) (*http.Request, error) {
+	u, err := absoluteURL(baseURI, requestURI)
 	if err != nil {
 		return nil, err
 	}
@@ -161,21 +161,20 @@ func process(req *http.Request) (*http.Response, error) {
 	return res, err
 }
 
-func absoluteURL(requestURI string) (*url.URL, error) {
+func absoluteURL(baseURI, requestURI string) (*url.URL, error) {
 	if ref, err := url.ParseRequestURI(normalize(requestURI)); err != nil {
 		return nil, err
-	} else if uri, err := baseURI(); err != nil {
+	} else if uri, err := baseURL(baseURI); err != nil {
 		return nil, err
 	} else {
 		return uri.ResolveReference(ref), nil
 	}
 }
-
-func baseURI() (*url.URL, error) {
-	if *util.StorageBaseURL == "" {
+func baseURL(baseString string) (*url.URL, error) {
+	if baseString == "" {
 		return nil, ErrNoStorage
 	}
-	return url.Parse(*util.StorageBaseURL)
+	return url.Parse(baseString)
 }
 
 // Keep concept of requestURI similar to S3 without a slash prefix.
