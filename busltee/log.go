@@ -29,7 +29,8 @@ func output(logFile string) io.Writer {
 	if logFile == "" {
 		return ioutil.Discard
 	}
-	if file, err := os.OpenFile(logFile, os.O_RDWR|os.O_APPEND, 0660); err != nil {
+	file, err := os.OpenFile(logFile, os.O_RDWR|os.O_APPEND, 0660)
+	if err != nil {
 		return ioutil.Discard
 	}
 	return file
