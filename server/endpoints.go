@@ -14,7 +14,13 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-func (s *Server) mkstream(w http.ResponseWriter, _ *http.Request) {
+// Endpoint holds the api endpoints
+type Endpoint struct {
+	*Config
+}
+
+// MakeUUID is a legacy endpoint used to create a uuid key
+func (e *Endpoint) MakeUUID(w http.ResponseWriter, _ *http.Request) {
 	registrar := broker.NewRedisRegistrar()
 	uuid := uuid.NewV4().String()
 
@@ -29,7 +35,8 @@ func (s *Server) mkstream(w http.ResponseWriter, _ *http.Request) {
 	io.WriteString(w, string(uuid))
 }
 
-func (s *Server) put(w http.ResponseWriter, r *http.Request) {
+// CreateStream creates a new stream
+func (e *Endpoint) CreateStream(w http.ResponseWriter, r *http.Request) {
 	registrar := broker.NewRedisRegistrar()
 
 	if err := registrar.Register(key(r)); err != nil {
@@ -42,11 +49,13 @@ func (s *Server) put(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+// Health checks app's health
+func (e *Endpoint) Health(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK")
 }
 
-func (s *Server) pub(w http.ResponseWriter, r *http.Request) {
+// Publisher allows sending data to a stream
+func (e *Endpoint) Publisher(w http.ResponseWriter, r *http.Request) {
 	if !hasEncoding(r.TransferEncoding, "chunked") {
 		http.Error(w, "A chunked Transfer-Encoding header is required.", http.StatusBadRequest)
 		return
@@ -84,16 +93,17 @@ func (s *Server) pub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Asynchronously upload the output to our defined storage backend.
-	go storeOutput(key(r), requestURI(r), s.StorageBaseURL)
+	go storeOutput(key(r), requestURI(r), e.StorageBaseURL)
 }
 
-func (s *Server) sub(w http.ResponseWriter, r *http.Request) {
+// Subscriber allows reading data from a stream
+func (e *Endpoint) Subscriber(w http.ResponseWriter, r *http.Request) {
 	if _, ok := w.(http.Flusher); !ok {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
 
-	rd, err := s.newReader(w, r)
+	rd, err := newReader(e.Config, w, r)
 	if rd != nil {
 		defer rd.Close()
 	}
@@ -112,13 +122,4 @@ func (s *Server) sub(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		rollbar.Error(rollbar.ERR, fmt.Errorf("unhandled error: %#v", err))
 	}
-}
-
-func hasEncoding(encodings []string, check string) bool {
-	for _, c := range encodings {
-		if c == check {
-			return true
-		}
-	}
-	return false
 }

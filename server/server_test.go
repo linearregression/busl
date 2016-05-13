@@ -15,57 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var baseServer = NewServer(&Config{
-	EnforceHTTPS:      false,
-	Credentials:       "",
-	HeartbeatDuration: time.Second,
-	StorageBaseURL:    "",
-})
-
-func TestMkstream(t *testing.T) {
-	request, _ := http.NewRequest("POST", "/streams", nil)
-	response := httptest.NewRecorder()
-
-	baseServer.mkstream(response, request)
-
-	assert.Equal(t, response.Code, 200)
-	assert.Len(t, response.Body.String(), 36)
-}
-
-func Test410(t *testing.T) {
-	streamID := uuid.NewV4()
-	request, _ := http.NewRequest("GET", fmt.Sprintf("/streams/%s", streamID), nil)
-	response := httptest.NewRecorder()
-
-	baseServer.sub(response, request)
-
-	assert.Equal(t, response.Code, http.StatusNotFound)
-	assert.Equal(t, response.Body.String(), "Channel is not registered.\n")
-}
-
-func TestPubNotRegistered(t *testing.T) {
-	streamID := uuid.NewV4()
-	request, _ := http.NewRequest("POST", fmt.Sprintf("/streams/%s", streamID), nil)
-	request.TransferEncoding = []string{"chunked"}
-	response := httptest.NewRecorder()
-
-	baseServer.pub(response, request)
-
-	assert.Equal(t, response.Code, http.StatusNotFound)
-}
-
-func TestPubWithoutTransferEncoding(t *testing.T) {
-	request, _ := http.NewRequest("POST", "/streams/1234", nil)
-	response := httptest.NewRecorder()
-
-	baseServer.pub(response, request)
-
-	assert.Equal(t, response.Code, http.StatusBadRequest)
-	assert.Equal(t, response.Body.String(), "A chunked Transfer-Encoding header is required.\n")
-}
-
-func TestPubSub(t *testing.T) {
-	server := httptest.NewServer(baseServer.router())
+func TestPublishAndSubscribe(t *testing.T) {
+	handler := NewHandler(&Config{false, "", time.Second, ""})
+	server := httptest.NewServer(handler)
 	defer server.Close()
 
 	data := [][]byte{
@@ -127,8 +79,9 @@ func TestPubSub(t *testing.T) {
 	}
 }
 
-func TestPubSubSSE(t *testing.T) {
-	server := httptest.NewServer(baseServer.router())
+func TestPublishAndSubscribeWithSSE(t *testing.T) {
+	handler := NewHandler(&Config{false, "", time.Second, ""})
+	server := httptest.NewServer(handler)
 	defer server.Close()
 
 	data := []struct {
@@ -180,7 +133,7 @@ func TestPubSubSSE(t *testing.T) {
 			assert.Nil(t, err)
 
 			body, _ := ioutil.ReadAll(resp.Body)
-			assert.Equal(t, body, []byte(testdata.output))
+			assert.Equal(t, fmt.Sprintf("%s", body), testdata.output)
 
 			if len(body) == 0 {
 				assert.Equal(t, resp.StatusCode, http.StatusNoContent)
@@ -193,8 +146,9 @@ func TestPubSubSSE(t *testing.T) {
 	}
 }
 
-func TestPut(t *testing.T) {
-	server := httptest.NewServer(baseServer.router())
+func TestCreateStream(t *testing.T) {
+	handler := NewHandler(&Config{false, "", time.Second, ""})
+	server := httptest.NewServer(handler)
 	defer server.Close()
 
 	transport := &http.Transport{}
@@ -217,12 +171,8 @@ func TestSubGoneWithBackend(t *testing.T) {
 	storage, get, _ := fileServer(uuid.String())
 	defer storage.Close()
 
-	baseServer.StorageBaseURL = storage.URL
-	defer func() {
-		baseServer.StorageBaseURL = ""
-	}()
-
-	server := httptest.NewServer(baseServer.router())
+	handler := NewHandler(&Config{false, "", time.Second, storage.URL})
+	server := httptest.NewServer(handler)
 	defer server.Close()
 
 	get <- []byte("hello world")
@@ -232,21 +182,17 @@ func TestSubGoneWithBackend(t *testing.T) {
 	assert.Nil(t, err)
 
 	body, _ := ioutil.ReadAll(resp.Body)
-	assert.Equal(t, body, []byte("hello world"))
+	assert.Equal(t, fmt.Sprintf("%s", body), "hello world")
 }
 
-func TestPutWithBackend(t *testing.T) {
+func TestCreateStreamWithBackend(t *testing.T) {
 	uuid := uuid.NewV4()
 
 	storage, _, put := fileServer(uuid.String())
 	defer storage.Close()
 
-	baseServer.StorageBaseURL = storage.URL
-	defer func() {
-		baseServer.StorageBaseURL = ""
-	}()
-
-	server := httptest.NewServer(baseServer.router())
+	handler := NewHandler(&Config{false, "", time.Second, storage.URL})
+	server := httptest.NewServer(handler)
 	defer server.Close()
 
 	transport := &http.Transport{}
@@ -266,12 +212,8 @@ func TestPutWithBackend(t *testing.T) {
 }
 
 func TestAuthentication(t *testing.T) {
-	baseServer.Credentials = "u:pass1|u:pass2"
-	defer func() {
-		baseServer.Credentials = ""
-	}()
-
-	server := httptest.NewServer(baseServer.router())
+	handler := NewHandler(&Config{false, "u:pass1|u:pass2", time.Second, ""})
+	server := httptest.NewServer(handler)
 	defer server.Close()
 
 	transport := &http.Transport{}
@@ -297,7 +239,8 @@ func TestAuthentication(t *testing.T) {
 			resp, err := client.Do(request)
 			defer resp.Body.Close()
 			assert.Nil(t, err)
-			assert.Equal(t, resp.Status, "401 Unauthorized")
+			assert.Equal(t, resp.Status, "401 Unauthorized",
+				fmt.Sprintf("%s request to %s should be 401. Was %s", method, path, resp.Status))
 		}
 	}
 
