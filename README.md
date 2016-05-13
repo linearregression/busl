@@ -73,3 +73,13 @@ $ export URL=$(docker-compose port web 5000)
 $ curl $URL/health
 OK
 ```
+
+## Busltee
+
+The busltee command allows streaming a command's logs to a busl stream.
+
+### Building
+
+```sh
+make busltee
+```
