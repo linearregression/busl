@@ -19,8 +19,8 @@ var gracefulServer *manners.GracefulServer
 
 func init() {
 	gracefulServer = manners.NewServer()
-	gracefulServer.ReadTimeout = *util.HttpReadTimeout
-	gracefulServer.WriteTimeout = *util.HttpWriteTimeout
+	gracefulServer.ReadTimeout = *util.HTTPReadTimeout
+	gracefulServer.WriteTimeout = *util.HTTPWriteTimeout
 }
 
 func mkstream(w http.ResponseWriter, _ *http.Request) {
@@ -62,7 +62,7 @@ func health(w http.ResponseWriter, r *http.Request) {
 }
 
 func pub(w http.ResponseWriter, r *http.Request) {
-	if !util.StringSliceUtil(r.TransferEncoding).Contains("chunked") {
+	if !util.StringInSlice(r.TransferEncoding, "chunked") {
 		http.Error(w, "A chunked Transfer-Encoding header is required.", http.StatusBadRequest)
 		return
 	}

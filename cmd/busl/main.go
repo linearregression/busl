@@ -16,10 +16,10 @@ func main() {
 	fmt.Println("Starting busl...")
 	flag.Parse()
 
-	_, err := strconv.Atoi(*util.HttpPort)
+	_, err := strconv.Atoi(*util.HTTPPort)
 	if err != nil {
 		log.Printf("%s: $PORT must be an integer value.\n", os.Args[0])
 		os.Exit(1)
 	}
-	server.Start(*util.HttpPort, util.AwaitSignals(syscall.SIGURG))
+	server.Start(*util.HTTPPort, util.AwaitSignals(syscall.SIGURG))
 }

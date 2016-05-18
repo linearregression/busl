@@ -7,30 +7,34 @@ import (
 )
 
 // NewResponseLogger creates a new logger for HTTP responses
-func NewResponseLogger(r *http.Request, w http.ResponseWriter) *responseLogger {
-	return &responseLogger{ResponseWriter: w, request: r, status: http.StatusOK}
+func NewResponseLogger(r *http.Request, w http.ResponseWriter) *ResponseLogger {
+	return &ResponseLogger{ResponseWriter: w, request: r, status: http.StatusOK}
 }
 
-type responseLogger struct {
+// ResponseLogger is a logger for HTTP responses
+type ResponseLogger struct {
 	http.ResponseWriter
 	request *http.Request
 	status  int
 }
 
-func (l *responseLogger) WriteHeader(s int) {
+// WriteHeader writes a new header to the response
+func (l *ResponseLogger) WriteHeader(s int) {
 	l.ResponseWriter.WriteHeader(s)
 	l.status = s
 }
 
-func (l *responseLogger) CloseNotify() <-chan bool {
+// CloseNotify returns a chan notifying when the connection is being closed
+func (l *ResponseLogger) CloseNotify() <-chan bool {
 	return l.ResponseWriter.(http.CloseNotifier).CloseNotify()
 }
 
-func (l *responseLogger) Flush() {
+// Flush flushes the response
+func (l *ResponseLogger) Flush() {
 	l.ResponseWriter.(http.Flusher).Flush()
 }
 
-func (l *responseLogger) requestID() (id string) {
+func (l *ResponseLogger) requestID() (id string) {
 	if id = l.request.Header.Get("Request-Id"); id == "" {
 		id = l.request.Header.Get("X-Request-Id")
 	}
@@ -48,7 +52,8 @@ func (l *responseLogger) requestID() (id string) {
 	return id
 }
 
-func (l *responseLogger) WriteLog() {
+// WriteLog logs the response
+func (l *ResponseLogger) WriteLog() {
 	maskedStatus := strconv.Itoa(l.status/100) + "xx"
 	log.Printf("count#http.status.%s=1 request_id=%s", maskedStatus, l.requestID())
 	log.Printf("method=%s path=\"%s\" host=\"%s\" fwd=\"%s\" status=%d user_agent=\"%s\" request_id=%s",

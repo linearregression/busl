@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	redisUrl           = flag.String("redisUrl", os.Getenv("REDIS_URL"), "URL of the redis server")
+	redisURL           = flag.String("redisUrl", os.Getenv("REDIS_URL"), "URL of the redis server")
 	redisServer        *url.URL
 	redisPool          *redis.Pool
 	redisKeyExpire     = 60 // redis uses seconds for EXPIRE
@@ -21,7 +21,7 @@ var (
 
 func init() {
 	flag.Parse()
-	redisServer, _ = url.Parse(*redisUrl)
+	redisServer, _ = url.Parse(*redisURL)
 	redisPool = newPool(redisServer)
 
 	conn := redisPool.Get()
@@ -69,26 +69,29 @@ func (c channel) id() string {
 	return string(c) + ":id"
 }
 
-func (c channel) wildcardId() string {
+func (c channel) wildcardID() string {
 	return string(c) + ":*"
 }
 
-func (c channel) doneId() string {
+func (c channel) doneID() string {
 	return string(c) + ":done"
 }
 
-func (c channel) killId() string {
+func (c channel) killID() string {
 	return string(c) + ":kill"
 }
 
+// RedisRegistrar is a channel storing data on redis
 type RedisRegistrar struct{}
 
+// NewRedisRegistrar creates a new registrar instance
 func NewRedisRegistrar() *RedisRegistrar {
 	registrar := &RedisRegistrar{}
 
 	return registrar
 }
 
+// Register registers the new channel
 func (rr *RedisRegistrar) Register(channelName string) (err error) {
 	conn := redisPool.Get()
 	defer conn.Close()
@@ -103,6 +106,7 @@ func (rr *RedisRegistrar) Register(channelName string) (err error) {
 	return
 }
 
+// IsRegistered checks whether a channel name is registered
 func (rr *RedisRegistrar) IsRegistered(channelName string) (registered bool) {
 	conn := redisPool.Get()
 	defer conn.Close()
@@ -118,6 +122,7 @@ func (rr *RedisRegistrar) IsRegistered(channelName string) (registered bool) {
 	return exists
 }
 
+// Get returns a key value
 func Get(key string) ([]byte, error) {
 	conn := redisPool.Get()
 	defer conn.Close()
