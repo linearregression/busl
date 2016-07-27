@@ -62,7 +62,7 @@ func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
 		if origin := r.Header.Get("Origin"); origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Content-Length,Accept-Encoding,X-CSRF-Token")
+		w.Header().Set("Access-Control-Expose-Headers", "Content-Type,Content-Length,Accept-Encoding,X-CSRF-Token")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		fn(w, r)
 	}
@@ -142,8 +142,8 @@ func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
 		w.Header().Set("Server", "Cowboy")
 		w.Header().Set("Via", "1.1 vegur")
 		w.Header().Set("Vary", "origin,accept-encoding")
-		w.Header().Set("Transfer-Encoding", "chunked")
-		w.Header().Set("Expires", "Sat, 06 Nov 1955 00:00:00 PST")
+		//w.Header().Set("Transfer-Encoding", "chunked")
+		w.Header().Set("Expires", "Sat, 05 Nov 1955 00:00:00 PST")
 		w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 
