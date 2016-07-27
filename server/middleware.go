@@ -141,7 +141,7 @@ func newReader(w http.ResponseWriter, r *http.Request) (io.ReadCloser, error) {
 	}
 
 	if r.Header.Get("Accept") == "text/event-stream" {
-		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 
 		encoder := encoders.NewSSEEncoder(rd)
