@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -150,6 +151,7 @@ func app() http.Handler {
 func Start(port string, shutdown <-chan struct{}) {
 	log.Printf("http.start.port=%s\n", port)
 	gracefulServer.Handler = app()
+	gracefulServer.TLSNextProto = map[string]func(*http.Server, *tls.Conn, http.Handler){}
 	go listenForShutdown(shutdown)
 
 	gracefulServer.Addr = ":" + port
