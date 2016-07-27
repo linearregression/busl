@@ -13,6 +13,8 @@ import (
 )
 
 func main() {
+	os.Setenv("GODEBUG", "http2server=0")
+
 	fmt.Println("Starting busl...")
 	flag.Parse()
 
