@@ -69,7 +69,7 @@ func NewReader(key string) (io.ReadCloser, error) {
 		return nil, ErrNotRegistered
 	}
 
-	psc := redis.PubSubConn{redisPool.Get()}
+	psc := redis.PubSubConn{Conn: redisPool.Get()}
 	channel := channel(key)
 	psc.PSubscribe(channel.wildcardID())
 
