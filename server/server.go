@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/braintree/manners"
 	"github.com/gorilla/mux"
@@ -15,15 +16,48 @@ import (
 	"github.com/heroku/rollbar"
 )
 
-var gracefulServer *manners.GracefulServer
-
-func init() {
-	gracefulServer = manners.NewServer()
-	gracefulServer.ReadTimeout = *util.HTTPReadTimeout
-	gracefulServer.WriteTimeout = *util.HTTPWriteTimeout
+// Config holds all the server options
+type Config struct {
+	EnforceHTTPS      bool
+	Credentials       string
+	HeartbeatDuration time.Duration
+	StorageBaseURL    string
 }
 
-func mkstream(w http.ResponseWriter, _ *http.Request) {
+// Server is a launchable api listener
+type Server struct {
+	*manners.GracefulServer
+	*Config
+}
+
+// NewServer creates a new server instance
+func NewServer(config *Config) *Server {
+	return &Server{
+		GracefulServer: manners.NewServer(),
+		Config:         config,
+	}
+}
+
+// Start starts the server instance
+func (s *Server) Start(port string, shutdown <-chan struct{}) {
+	log.Printf("http.start.port=%s\n", port)
+	s.Handler = s.router()
+	go s.listenForShutdown(shutdown)
+
+	s.Addr = ":" + port
+	if err := s.ListenAndServe(); err != nil {
+		log.Fatalf("server.server error=%v", err)
+	}
+}
+
+func (s *Server) listenForShutdown(shutdown <-chan struct{}) {
+	log.Println("http.graceful.await")
+	<-shutdown
+	log.Println("http.graceful.shutdown")
+	s.Close()
+}
+
+func (s *Server) mkstream(w http.ResponseWriter, _ *http.Request) {
 	registrar := broker.NewRedisRegistrar()
 	uuid, err := util.NewUUID()
 	if err != nil {
@@ -44,7 +78,7 @@ func mkstream(w http.ResponseWriter, _ *http.Request) {
 	io.WriteString(w, string(uuid))
 }
 
-func put(w http.ResponseWriter, r *http.Request) {
+func (s *Server) put(w http.ResponseWriter, r *http.Request) {
 	registrar := broker.NewRedisRegistrar()
 
 	if err := registrar.Register(key(r)); err != nil {
@@ -57,11 +91,11 @@ func put(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func health(w http.ResponseWriter, r *http.Request) {
+func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK")
 }
 
-func pub(w http.ResponseWriter, r *http.Request) {
+func (s *Server) pub(w http.ResponseWriter, r *http.Request) {
 	if !util.StringInSlice(r.TransferEncoding, "chunked") {
 		http.Error(w, "A chunked Transfer-Encoding header is required.", http.StatusBadRequest)
 		return
@@ -99,16 +133,16 @@ func pub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Asynchronously upload the output to our defined storage backend.
-	go storeOutput(key(r), requestURI(r))
+	go storeOutput(key(r), requestURI(r), s.StorageBaseURL)
 }
 
-func sub(w http.ResponseWriter, r *http.Request) {
+func (s *Server) sub(w http.ResponseWriter, r *http.Request) {
 	if _, ok := w.(http.Flusher); !ok {
 		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
 
-	rd, err := newReader(w, r)
+	rd, err := s.newReader(w, r)
 	if rd != nil {
 		defer rd.Close()
 	}
@@ -129,38 +163,19 @@ func sub(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func app() http.Handler {
+func (s *Server) router() http.Handler {
 	r := mux.NewRouter()
 
-	r.HandleFunc("/health", addDefaultHeaders(health))
+	r.HandleFunc("/health", s.addDefaultHeaders(s.health))
 
 	// Legacy endpoint for creating the uuid `key` for you.
-	r.HandleFunc("/streams", auth(addDefaultHeaders(mkstream)))
+	r.HandleFunc("/streams", s.auth(s.addDefaultHeaders(s.mkstream)))
 
 	// New `key` design for allowing any kind of id to be decided
 	// by the caller (in this case, it mirrors what we have in S3).
-	r.HandleFunc("/streams/{key:.+}", addDefaultHeaders(sub)).Methods("GET")
-	r.HandleFunc("/streams/{key:.+}", addDefaultHeaders(pub)).Methods("POST")
-	r.HandleFunc("/streams/{key:.+}", auth(addDefaultHeaders(put))).Methods("PUT")
+	r.HandleFunc("/streams/{key:.+}", s.addDefaultHeaders(s.sub)).Methods("GET")
+	r.HandleFunc("/streams/{key:.+}", s.addDefaultHeaders(s.pub)).Methods("POST")
+	r.HandleFunc("/streams/{key:.+}", s.auth(s.addDefaultHeaders(s.put))).Methods("PUT")
 
-	return logRequest(enforceHTTPS(r.ServeHTTP))
-}
-
-// Start starts the server instance
-func Start(port string, shutdown <-chan struct{}) {
-	log.Printf("http.start.port=%s\n", port)
-	gracefulServer.Handler = app()
-	go listenForShutdown(shutdown)
-
-	gracefulServer.Addr = ":" + port
-	if err := gracefulServer.ListenAndServe(); err != nil {
-		log.Fatalf("server.server error=%v", err)
-	}
-}
-
-func listenForShutdown(shutdown <-chan struct{}) {
-	log.Println("http.graceful.await")
-	<-shutdown
-	log.Println("http.graceful.shutdown")
-	gracefulServer.Close()
+	return logRequest(s.enforceHTTPS(r.ServeHTTP))
 }

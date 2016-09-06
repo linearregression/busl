@@ -6,20 +6,32 @@ import (
 	"os"
 
 	"github.com/heroku/busl/busltee"
+	"github.com/heroku/rollbar"
 	flag "github.com/ogier/pflag"
 )
 
+type cmdConfig struct {
+	RollbarEnvironment string
+	RollbarToken       string
+}
+
 func main() {
-	conf, err := parseFlags()
+	cmdConf, publisherConf, err := parseFlags()
 	if err != nil {
 		usage()
 		os.Exit(1)
 	}
 
-	busltee.OpenLogs(conf.LogFile, conf.LogPrefix)
+	if cmdConf.RollbarToken != "" {
+		rollbar.Token = cmdConf.RollbarToken
+		rollbar.Environment = cmdConf.RollbarEnvironment
+		rollbar.ServerRoot = "github.com/heroku/busl"
+	}
+
+	busltee.OpenLogs(publisherConf.LogFile, publisherConf.LogPrefix)
 	defer busltee.CloseLogs()
 
-	if exitCode := busltee.Run(conf.URL, conf.Args, conf); exitCode != 0 {
+	if exitCode := busltee.Run(publisherConf.URL, publisherConf.Args, publisherConf); exitCode != 0 {
 		os.Exit(exitCode)
 	}
 }
@@ -29,25 +41,29 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-func parseFlags() (*busltee.Config, error) {
-	conf := &busltee.Config{}
+func parseFlags() (*cmdConfig, *busltee.Config, error) {
+	publisherConf := &busltee.Config{}
+	cmdConf := &cmdConfig{}
+
+	cmdConf.RollbarEnvironment = os.Getenv("ROLLBAR_ENVIRONMENT")
+	cmdConf.RollbarToken = os.Getenv("ROLLBAR_TOKEN")
 
 	// Connection related flags
-	flag.BoolVarP(&conf.Insecure, "insecure", "k", false, "allows insecure SSL connections")
-	flag.IntVar(&conf.Retry, "retry", 5, "max retries for connect timeout errors")
-	flag.Float64Var(&conf.Timeout, "connect-timeout", 1, "max number of seconds to connect to busl URL")
+	flag.BoolVarP(&publisherConf.Insecure, "insecure", "k", false, "allows insecure SSL connections")
+	flag.IntVar(&publisherConf.Retry, "retry", 5, "max retries for connect timeout errors")
+	flag.Float64Var(&publisherConf.Timeout, "connect-timeout", 1, "max number of seconds to connect to busl URL")
 
 	// Logging related flags
-	flag.StringVar(&conf.LogPrefix, "log-prefix", "", "log prefix")
-	flag.StringVar(&conf.LogFile, "log-file", "", "log file")
-	flag.StringVar(&conf.RequestID, "request-id", "", "request id")
+	flag.StringVar(&publisherConf.LogPrefix, "log-prefix", "", "log prefix")
+	flag.StringVar(&publisherConf.LogFile, "log-file", "", "log file")
+	flag.StringVar(&publisherConf.RequestID, "request-id", "", "request id")
 
 	if flag.Parse(); len(flag.Args()) < 2 {
-		return nil, errors.New("insufficient args")
+		return nil, nil, errors.New("insufficient args")
 	}
 
-	conf.URL = flag.Arg(0)
-	conf.Args = flag.Args()[1:]
+	publisherConf.URL = flag.Arg(0)
+	publisherConf.Args = flag.Args()[1:]
 
-	return conf, nil
+	return cmdConf, publisherConf, nil
 }
