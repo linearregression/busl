@@ -2,7 +2,7 @@ test: .PHONY
 	env $$(cat .env) go test ./...
 
 web: .PHONY
-	env $$(cat .env) go run main.go
+	env $$(cat .env) go run cmd/busl/main.go
 
 busltee: .PHONY bin/busltee
 
