@@ -45,8 +45,8 @@ func parseFlags() (*cmdConfig, *busltee.Config, error) {
 	publisherConf := &busltee.Config{}
 	cmdConf := &cmdConfig{}
 
-	flag.StringVar(&cmdConf.RollbarEnvironment, "rollbarEnvironment", os.Getenv("ROLLBAR_ENVIRONMENT"), "Rollbar Enviornment for this application (development/staging/production).")
-	flag.StringVar(&cmdConf.RollbarToken, "rollbarToken", os.Getenv("ROLLBAR_TOKEN"), "Rollbar Token for sending issues to Rollbar.")
+	cmdConf.RollbarEnvironment = os.Getenv("ROLLBAR_ENVIRONMENT")
+	cmdConf.RollbarToken = os.Getenv("ROLLBAR_TOKEN")
 
 	// Connection related flags
 	flag.BoolVarP(&publisherConf.Insecure, "insecure", "k", false, "allows insecure SSL connections")
