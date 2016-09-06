@@ -52,17 +52,17 @@ func parseFlags() (*cmdConfig, *server.Config, error) {
 	httpConf := &server.Config{}
 	cmdConf := &cmdConfig{}
 
-	flag.StringVar(&cmdConf.RollbarEnvironment, "rollbarEnvironment", os.Getenv("ROLLBAR_ENVIRONMENT"), "Rollbar Environment for this application (development/staging/production).")
-	flag.StringVar(&cmdConf.RollbarToken, "rollbarToken", os.Getenv("ROLLBAR_TOKEN"), "Rollbar Token for sending issues to Rollbar.")
+	cmdConf.RollbarEnvironment = os.Getenv("ROLLBAR_ENVIRONMENT")
+	cmdConf.RollbarToken = os.Getenv("ROLLBAR_TOKEN")
 
-	flag.StringVar(&cmdConf.HTTPPort, "httpPort", os.Getenv("PORT"), "HTTP port for the server.")
+	cmdConf.HTTPPort = os.Getenv("PORT")
 	flag.DurationVar(&cmdConf.HTTPReadTimeout, "httpReadTimeout", time.Hour, "Timeout for HTTP request reading")
 	flag.DurationVar(&cmdConf.HTTPWriteTimeout, "httpWriteTimeout", time.Hour, "Timeout for HTTP request writing")
 
-	flag.StringVar(&httpConf.Credentials, "creds", os.Getenv("CREDS"), "user1:pass1|user2:pass2")
-	flag.BoolVar(&httpConf.EnforceHTTPS, "enforceHttps", os.Getenv("ENFORCE_HTTPS") == "1", "Whether to enforce use of HTTPS.")
+	httpConf.Credentials = os.Getenv("CREDS")
+	httpConf.EnforceHTTPS = os.Getenv("ENFORCE_HTTPS") == "1"
 	flag.DurationVar(&httpConf.HeartbeatDuration, "subscribeHeartbeatDuration", time.Second*10, "Heartbeat interval for HTTP stream subscriptions.")
-	flag.StringVar(&httpConf.StorageBaseURL, "storageBaseURL", os.Getenv("STORAGE_BASE_URL"), "Optional persistent blob storage (i.e. S3)")
+	httpConf.StorageBaseURL = os.Getenv("STORAGE_BASE_URL")
 
 	flag.Parse()
 
