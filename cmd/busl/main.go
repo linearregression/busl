@@ -5,21 +5,80 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/heroku/busl/server"
-	"github.com/heroku/busl/util"
+	"github.com/heroku/rollbar"
 )
+
+type cmdConfig struct {
+	RollbarEnvironment string
+	RollbarToken       string
+
+	HTTPPort         string
+	HTTPReadTimeout  time.Duration
+	HTTPWriteTimeout time.Duration
+}
 
 func main() {
 	fmt.Println("Starting busl...")
-	flag.Parse()
+	cmdConf, httpConf, err := parseFlags()
+	if err != nil {
+		os.Exit(1)
+	}
 
-	_, err := strconv.Atoi(*util.HTTPPort)
+	if cmdConf.RollbarToken != "" {
+		rollbar.Token = cmdConf.RollbarToken
+		rollbar.Environment = cmdConf.RollbarEnvironment
+		rollbar.ServerRoot = "github.com/heroku/busl"
+	}
+
+	_, err = strconv.Atoi(cmdConf.HTTPPort)
 	if err != nil {
 		log.Printf("%s: $PORT must be an integer value.\n", os.Args[0])
 		os.Exit(1)
 	}
-	server.Start(*util.HTTPPort, util.AwaitSignals(syscall.SIGURG))
+
+	s := server.NewServer(httpConf)
+	s.ReadTimeout = cmdConf.HTTPReadTimeout
+	s.WriteTimeout = cmdConf.HTTPWriteTimeout
+	s.Start(cmdConf.HTTPPort, awaitSignals(syscall.SIGURG))
+}
+
+func parseFlags() (*cmdConfig, *server.Config, error) {
+	httpConf := &server.Config{}
+	cmdConf := &cmdConfig{}
+
+	cmdConf.RollbarEnvironment = os.Getenv("ROLLBAR_ENVIRONMENT")
+	cmdConf.RollbarToken = os.Getenv("ROLLBAR_TOKEN")
+
+	cmdConf.HTTPPort = os.Getenv("PORT")
+	flag.DurationVar(&cmdConf.HTTPReadTimeout, "httpReadTimeout", time.Hour, "Timeout for HTTP request reading")
+	flag.DurationVar(&cmdConf.HTTPWriteTimeout, "httpWriteTimeout", time.Hour, "Timeout for HTTP request writing")
+
+	httpConf.Credentials = os.Getenv("CREDS")
+	httpConf.EnforceHTTPS = os.Getenv("ENFORCE_HTTPS") == "1"
+	flag.DurationVar(&httpConf.HeartbeatDuration, "subscribeHeartbeatDuration", time.Second*10, "Heartbeat interval for HTTP stream subscriptions.")
+	httpConf.StorageBaseURL = os.Getenv("STORAGE_BASE_URL")
+
+	flag.Parse()
+
+	return cmdConf, httpConf, nil
+}
+
+func awaitSignals(signals ...os.Signal) <-chan struct{} {
+	s := make(chan os.Signal, 1)
+	signal.Notify(s, signals...)
+	log.Printf("signals.await signals=%v\n", signals)
+
+	received := make(chan struct{})
+	go func() {
+		log.Printf("signals.received signal=%v\n", <-s)
+		close(received)
+	}()
+
+	return received
 }
