@@ -140,18 +140,21 @@ func (s *Server) newReader(w http.ResponseWriter, r *http.Request) (io.ReadClose
 		return nil, errNoContent
 	}
 
+	var encoder encoders.Encoder
 	if r.Header.Get("Accept") == "text/event-stream" {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 
-		encoder := encoders.NewSSEEncoder(rd)
-		encoder.(io.Seeker).Seek(offset(r), 0)
-
-		rd = ioutil.NopCloser(encoder)
+		encoder = encoders.NewSSEEncoder(rd)
 
 		// For SSE, we change the ack to a :keepalive
 		ack = []byte(":keepalive\n")
+	} else {
+		encoder = encoders.NewTextEncoder(rd)
 	}
+
+	encoder.(io.Seeker).Seek(offset(r), 0)
+	rd = ioutil.NopCloser(encoder)
 
 	done := w.(http.CloseNotifier).CloseNotify()
 	return newKeepAliveReader(rd, ack, s.HeartbeatDuration, done), nil
