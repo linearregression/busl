@@ -35,9 +35,7 @@ to setup to test and run busl, setup [godep](http://godoc.org/github.com/tools/g
 and then:
 
 ```sh
-$ godep go install
-$ cp .sample.env .env
-$ export $(cat .env)
+$ make setup
 ```
 
 ## test
@@ -45,7 +43,7 @@ $ export $(cat .env)
 to run tests:
 
 ```sh
-$ godep go test ./...
+$ make test
 ```
 
 ## run
@@ -53,7 +51,7 @@ $ godep go test ./...
 to run the server:
 
 ```sh
-$ godep go run cmd/busl/main.go
+$ make web
 ```
 
 ## deploy
